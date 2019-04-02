@@ -1,6 +1,6 @@
 ## Load in data
-troops <- read.table("troops.txt", header=T)
-cities <- read.table("cities.txt", header=T)
+troops <- read.table("https://raw.githubusercontent.com/nsmackler/PSYCH-531/master/napoleon/troops.txt", header=T)
+cities <- read.table("https://raw.githubusercontent.com/nsmackler/PSYCH-531/master/napoleon/cities.txt", header=T)
 
 ## load in tidyverse
 library(dplyr)
