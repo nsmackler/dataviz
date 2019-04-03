@@ -1,11 +1,11 @@
-## Load in data
-troops <- read.table("https://raw.githubusercontent.com/nsmackler/PSYCH-531/master/napoleon/troops.txt", header=T)
-cities <- read.table("https://raw.githubusercontent.com/nsmackler/PSYCH-531/master/napoleon/cities.txt", header=T)
-
 ## load in packages (just tidyverse)
 library(tidyverse)
 
-troops %>% head()
+## Load in data
+troops <- read_delim("https://raw.githubusercontent.com/nsmackler/PSYCH-531/master/napoleon/troops.txt", delim=" ", col_names = TRUE)
+cities <- read_delim("https://raw.githubusercontent.com/nsmackler/PSYCH-531/master/napoleon/cities.txt", delim=" ", col_names = TRUE)
+
+troops
 
 ## plot with just paths
 ggplot(troops, aes(x = long, y = lat, group = group)) +
