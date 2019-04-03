@@ -1,4 +1,4 @@
-Title,Metacritic rating,IMDB rating,Rottentomatoes rating
+title,metacritic,IMDB,rotten_tomatoes
 The Singing Forest,1,1.6,0
 The Price of Air,8,1.9,0
 Superbabies: Baby Geniuses 2,9,1.9,0
