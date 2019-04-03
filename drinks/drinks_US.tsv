@@ -1,4 +1,5 @@
-Year	Beer	Wine	Spirits	All beverages
+#per capita ethanol consumption (in gallons) - from https://pubs.niaaa.nih.gov/publications/surveillance95/tab1_10.htm 
+year	beer	wine	spirits	total
 2010	1.13	0.39	0.74	2.26
 2009	1.17	0.38	0.74	2.29
 2008	1.2	0.38	0.73	2.31
