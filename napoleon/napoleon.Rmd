@@ -1,0 +1,73 @@
+---
+title: "napoleon"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+load the required packages
+```{r}
+library(tidyverse)
+```
+
+load in the data
+```{r}
+troops <- read_delim("https://raw.githubusercontent.com/nsmackler/PSYCH-531/master/napoleon/troops.txt", delim="\t", col_names = TRUE)
+cities <- read_delim("https://raw.githubusercontent.com/nsmackler/PSYCH-531/master/napoleon/cities.txt", delim="\t", col_names = TRUE)
+
+troops
+```
+
+plot just the paths
+```{r}
+ggplot(troops, aes(x = long, y = lat, group = group)) +
+  geom_path()
+```
+
+now add in some color based on the direction of (advance vs. retreat)
+```{r}
+ggplot(troops, aes(x = long, y = lat, group = group, 
+                   color = direction, size = survivors)) +
+      geom_path()
+```
+
+round the ends of the path, so that it connects better
+```{r}
+ggplot(troops, aes(x = long, y = lat, group = group, 
+                   color = direction, size = survivors)) +
+      geom_path(lineend = "round")
+```
+
+
+increase the width range scaling ("survivors")
+```{r}
+ggplot(troops, aes(x = long, y = lat, group = group, 
+                   color = direction, size = survivors)) +
+      geom_path(lineend = "round")+
+      scale_size(range = c(0.5, 15))
+```
+
+remove the labels and adjust the colors to make it look just like Minard's original plot
+```{r}
+ggplot(troops, aes(x = long, y = lat, group = group, 
+                   color = direction, size = survivors)) +
+  geom_path(lineend = "round") +
+  scale_size(range = c(0.5, 15)) + 
+  scale_colour_manual(values = c("#DFC17E", "#252523")) +
+  labs(x = NULL, y = NULL) + 
+  guides(color = FALSE, size = FALSE)
+```
+
+Add in the city labels
+```{r}
+ggplot() +
+  geom_path(data = troops, aes(x = long, y = lat, group = group, 
+                               color = direction, size = survivors),
+            lineend = "round") +
+  geom_point(data = cities, aes(x = long, y = lat)) +
+  geom_text(data = cities, aes(x = long, y = lat, label = city),col="red", vjust = 1.5) +
+  scale_size(range = c(0.5, 15)) + 
+  scale_colour_manual(values = c("#DFC17E", "#252523")) +
+  labs(x = NULL, y = NULL) + 
+  guides(color = FALSE, size = FALSE)
+```
