@@ -20,20 +20,20 @@ troops
 
 plot just the paths
 ```{r}
-ggplot(troops, aes(x = long, y = lat, group = group)) +
+ggplot(troops, aes(x = long, y = lat, group = battalion)) +
   geom_path()
 ```
 
 now add in some color based on the direction of (advance vs. retreat)
 ```{r}
-ggplot(troops, aes(x = long, y = lat, group = group, 
+ggplot(troops, aes(x = long, y = lat, group = battalion, 
                    color = direction, size = survivors)) +
       geom_path()
 ```
 
 round the ends of the path, so that it connects better
 ```{r}
-ggplot(troops, aes(x = long, y = lat, group = group, 
+ggplot(troops, aes(x = long, y = lat, group = battalion, 
                    color = direction, size = survivors)) +
       geom_path(lineend = "round")
 ```
@@ -41,7 +41,7 @@ ggplot(troops, aes(x = long, y = lat, group = group,
 
 increase the width range scaling ("survivors")
 ```{r}
-ggplot(troops, aes(x = long, y = lat, group = group, 
+ggplot(troops, aes(x = long, y = lat, group = battalion, 
                    color = direction, size = survivors)) +
       geom_path(lineend = "round")+
       scale_size(range = c(0.5, 15))
@@ -49,7 +49,7 @@ ggplot(troops, aes(x = long, y = lat, group = group,
 
 remove the labels and adjust the colors to make it look just like Minard's original plot
 ```{r}
-ggplot(troops, aes(x = long, y = lat, group = group, 
+ggplot(troops, aes(x = long, y = lat, group = battalion, 
                    color = direction, size = survivors)) +
   geom_path(lineend = "round") +
   scale_size(range = c(0.5, 15)) + 
