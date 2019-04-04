@@ -1,4 +1,4 @@
-long	lat	survivors	direction	group
+long	lat	survivors	direction	battalion
 24	54.9	340000	A	1
 24.5	55	340000	A	1
 25.5	54.5	340000	A	1
