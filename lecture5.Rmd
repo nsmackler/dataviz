@@ -1,0 +1,67 @@
+start your engines (load your packages)
+```{r}
+library(tidyverse)
+
+theme_set(theme_classic(base_size = 20)) 
+```
+
+read in the files
+```{r}
+movies_imdb=read_delim("movies/movies_imdb.txt",delim=",")
+movies_rottentom=read_delim("movies/movies_rottentom.txt",delim=",")
+```
+
+read in drinks and convert it to long format with just beer, wine, and spirits
+```{r}
+drinks=read_delim("drinks/drinks_US.tsv",delim="\t")
+
+drinks_long=drinks %>% select(-total) %>% gather(key=type,value=gallons,beer:spirits)
+
+drinks_long
+
+ggplot(data=drinks_long,aes(x=year,y=gallons))+geom_point()
+```
+
+make some plots (what can we do to make this better?)
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons))+geom_point()
+```
+
+line plot? wow -that's weird....
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons))+geom_line()
+```
+
+what if we use the "group" mapping... hmmm 
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,group=type))+geom_line()
+```
+
+let's add some color 
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,group=type,col=type))+geom_line()
+
+## note that when you use "color" or "fill" it automatically passes that same argument to "group", so this line is effectively the same
+ggplot(data=drinks_long,aes(x=year,y=gallons,col=type))+geom_line()
+```
+
+What about better colors?
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,col=type))+geom_line()+scale_color_manual(values = c("black","red"))
+```
+
+What about better colors?
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,col=type))+geom_line()+scale_color_brewer(palette = "Set1")
+```
+
+What about conveying more information?
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_color_brewer(palette = "Set1")
+```
+
+well that didn't work as well as we thought:
+What about conveying more information?
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_brewer(palette = "Set1")
+```
