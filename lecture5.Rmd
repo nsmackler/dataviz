@@ -66,6 +66,27 @@ BOOM:
 ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_brewer(palette = "Set1")
 ```
 
+we can also change the hue and saturation manually
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_hue(l=45,c=50)
+
+ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_hue(l=45)
+
+```
+
+##Faceting
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons))+geom_line()+facet_grid(~type)
+```
+
+arranging multiple figures with gridArrange
+```{r}
+library(gridExtra)
+plot1=ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_hue(l=45)
+plot2=ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_hue(l=45,c=50)
+grid.arrange(plot1,plot2,nrow=2)
+```
+
 Can we save these figures? How should we save them?
 ```{r}
 ggsave(ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_brewer(palette = "Set1"),file="drinks.pdf",width=10,height = 4)
