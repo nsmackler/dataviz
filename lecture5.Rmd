@@ -37,7 +37,7 @@ what if we use the "group" mapping... hmmm
 ggplot(data=drinks_long,aes(x=year,y=gallons,group=type))+geom_line()
 ```
 
-let's add some color 
+let's add some color so we know what drink is what
 ```{r}
 ggplot(data=drinks_long,aes(x=year,y=gallons,group=type,col=type))+geom_line()
 
@@ -45,7 +45,7 @@ ggplot(data=drinks_long,aes(x=year,y=gallons,group=type,col=type))+geom_line()
 ggplot(data=drinks_long,aes(x=year,y=gallons,col=type))+geom_line()
 ```
 
-What about better colors?
+What about better colors? (What's wrong with this code? Why doesn't it work?)
 ```{r}
 ggplot(data=drinks_long,aes(x=year,y=gallons,col=type))+geom_line()+scale_color_manual(values = c("black","red"))
 ```
@@ -55,13 +55,20 @@ What about better colors?
 ggplot(data=drinks_long,aes(x=year,y=gallons,col=type))+geom_line()+scale_color_brewer(palette = "Set1")
 ```
 
-What about conveying more information?
+What about conveying more information? (why are the colors not the RColorBrewer palette colors?)
 ```{r}
 ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_color_brewer(palette = "Set1")
 ```
 
 well that didn't work as well as we thought:
-What about conveying more information?
+BOOM:
 ```{r}
 ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_brewer(palette = "Set1")
 ```
+
+Can we save these figures? How should we save them?
+```{r}
+ggsave(ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_brewer(palette = "Set1"),file="drinks.pdf",width=10,height = 4)
+```
+
+##STRINGS ON STRINGS ON STRINGS
