@@ -1,0 +1,196 @@
+
+```{r}
+library(tidyverse)
+```
+
+read in the files
+```{r}
+movies_imdb=read_delim("movies/movies_imdb.txt",delim=",")
+movies_rottentom=read_delim("movies/movies_rottentom.txt",delim=",")
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+movies_imdb %>% select(movie_title,title_year,duration,imdb_score)
+```
+
+```{r}
+imdb_minimal=movies_imdb %>% select(movie_title,title_year,duration,imdb_score)
+```
+
+
+```{r}
+imdb_minimal=movies_imdb %>% select(movie_title,title_year,duration,imdb_score)
+
+joined=full_join(imdb_minimal,movies_rottentom,by=c("movie_title"="title"))
+```
+
+
+ggplot data
+```{r}
+plot_imdb = ggplot(movies_imdb)
+summary(plot_imdb)
+```
+
+ggplot aesthetics
+```{r}
+plot_imdb = ggplot(movies_imdb) + aes(x=title_year,y=imdb_score)
+summary(plot_imdb)
+```
+
+Add layers to a ggplot object with +
+```{r}
+plot_imdb = ggplot(movies_imdb)
+plot_imdb = plot_imdb + aes(x=title_year,y=imdb_score)
+summary(plot_imdb)
+```
+
+ggplot geoms
+```{r}
+plot_imdb = plot_imdb + geom_point()
+summary(plot_imdb)
+plot_imdb
+```
+
+back to the slides for a second.
+
+some nice default themes 
+```{r}
+plot_imdb = plot_imdb + theme_classic(base_size = 20) 
+plot_imdb
+```
+
+set it globally
+```{r}
+theme_set(theme_classic(base_size = 20)) 
+```
+
+and axis labels
+```{r}
+plot_imdb + xlab("movie release year") + ylab("IMDB score")
+plot_imdb + xlab("movie release\n(year)") + ylab("IMDB score")
+plot_imdb=plot_imdb + xlab("movie release year") + ylab("IMDB score")
+```
+
+ggplot scale
+```{r}
+plot_imdb + scale_y_continuous(limits=c(0,10))+scale_x_continuous(limits=c(1975,2010))
+```
+
+ggplot statistics
+Note: every stat has a default geom, every geom has a default stat
+```{r}
+plot_imdb + stat_smooth()
+plot_imdb + stat_smooth(method="lm")
+plot_imdb + stat_smooth(method="lm",se=F)
+```
+
+Overplotting is a problem, how can we summarize?
+```{r}
+plot_imdb = ggplot(movies_imdb) + aes(x=title_year,y=imdb_score)+geom_point(alpha=0.1)+ xlab("movie release year") + ylab("IMDB score")+theme_classic(base_size = 20) + ggtitle("alpha == 0.1")
+plot_imdb
+plot_imdb = ggplot(movies_imdb) + aes(x=title_year,y=imdb_score)+geom_point(alpha=0.01)+ xlab("movie release year") + ylab("IMDB score")+theme_classic(base_size = 20) + ggtitle("alpha == 0.01")
+plot_imdb
+```
+
+another way
+```{r}
+ggplot(movies_imdb) + aes(x=title_year,y=imdb_score)+xlab("movie release year") + ylab("IMDB score")+theme_classic(base_size = 20) + geom_bin2d()
+```
+
+another way
+```{r}
+ggplot(movies_imdb) + aes(x=title_year,y=imdb_score)+xlab("movie release year") + ylab("IMDB score")+theme_classic(base_size = 20) + geom_count(alpha=0.1)
+```
+
+another way
+```{r}
+ggplot(movies_imdb) + aes(x=title_year,y=imdb_score)+xlab("movie release year") + ylab("IMDB score")+geom_point()+theme_classic(base_size = 20) + geom_quantile()
+```
+
+Let's change the color of the points
+Aesthetics: mapping vs. setting
+```{r}
+imdb_plot=ggplot(movies_imdb) + aes(x=title_year,y=imdb_score)+xlab("movie release year") + ylab("IMDB score")+theme_classic(base_size = 20)
+
+imdb_plot+ geom_point(col="green")
+
+imdb_plot+ geom_point(aes(col="green"))
+```
+
+So how would we color them by their total budget?
+```{r}
+imdb_plot=ggplot(movies_imdb) + aes(x=title_year,y=imdb_score)+xlab("movie release year") + ylab("IMDB score")+theme_classic(base_size = 20)
+
+imdb_plot+geom_point(aes(col=budget))
+```
+
+Back to stats, how about plots for color and b/w movies?
+```{r}
+imdb_plot=ggplot(movies_imdb) + aes(x=title_year,y=imdb_score)+xlab("movie release year") + ylab("IMDB score")+theme_classic(base_size = 20)
+
+imdb_plot+geom_point(aes(col=budget))
+```
+
+piping the tidyverse right into ggplots
+```{r}
+movies_imdb %>% group_by(title_year) %>% summarize(min_score=min(imdb_score),max_score=max(imdb_score),mean_score=mean(imdb_score)) %>% ggplot(aes(x=title_year,y=mean_score,ymin=min_score,ymax=max_score))+geom_errorbar()+geom_point()
+```
+
+read in drinks anda convert it to long format with just beer, wine, and spirits
+```{r}
+drinks=read_delim("drinks/drinks_US.tsv",delim="\t")
+
+drinks_long=drinks %>% gather(key=type,value=gallons,beer:spirits)
+
+drinks_long
+
+ggplot(data=drinks_long,aes(x=year,y=gallons))+geom_point()
+```
+
+make some plots (what can we do to make this better?)
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons))+geom_point()
+```
+
+line plot? wow -that's weird....
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons))+geom_line()
+```
+
+what if we use the "group" mapping... hmmm 
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,group=type))+geom_line()
+```
+
+let's add some color 
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,group=type,col=type))+geom_line()
+
+## note that when you use "color" or "fill" it automatically passes that same argument to "group", so this line is effectively the same
+ggplot(data=drinks_long,aes(x=year,y=gallons,col=type))+geom_line()
+```
+
+What about better colors?
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,col=type))+geom_line()+scale_color_manual(values = c("black","red"))
+```
+
+What about better colors?
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,col=type))+geom_line()+scale_color_brewer(palette = "Set1")
+```
+
+What about conveying more information?
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_color_brewer(palette = "Set1")
+```
+
+well that didn't work as well as we thought:
+What about conveying more information?
+```{r}
+ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_brewer(palette = "Set1")
+```

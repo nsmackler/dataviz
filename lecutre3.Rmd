@@ -1,0 +1,99 @@
+---
+title: "Psych-531"
+author: "Noah"
+output: html_document
+---
+
+## HEADER 1
+### HEADER 2
+
+**BOLD**
+*ITALICS*
+
+this is a list
+
+* item 1
+* item 2
+* item 3
+
+```{r}
+library(tidyverse)
+```
+
+this is annotation 
+```{r}
+movies_imdb=read_delim("movies/movies_imdb.txt",delim=",")
+movies_rottentom=read_delim("movies/movies_rottentom.txt",delim=",")
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+movies_imdb %>% select(movie_title,title_year,duration,imdb_score)
+```
+
+```{r}
+imdb_minimal=movies_imdb %>% select(movie_title,title_year,duration,imdb_score)
+```
+
+
+```{r}
+imdb_minimal=movies_imdb %>% select(movie_title,title_year,duration,imdb_score)
+
+joined=full_join(imdb_minimal,movies_rottentom,by=c("movie_title"="title"))
+```
+
+
+ggplot data
+```{r}
+plot_imdb = ggplot(movies_imdb)
+summary(plot_imdb)
+```
+
+ggplot aesthetics
+```{r}
+plot_imdb = ggplot(movies_imdb) + aes(x=title_year,y=imdb_score)
+summary(plot_imdb)
+```
+
+Add layers to a ggplot object with +
+```{r}
+plot_imdb = ggplot(movies_imdb)
+plot_imdb = plot_imdb + aes(x=title_year,y=imdb_score)
+summary(plot_imdb)
+```
+
+ggplot geoms
+```{r}
+plot_imdb = plot_imdb + geom_point()
+summary(plot_imdb)
+plot_imdb
+```
+
+back to the slides for a second.
+
+some nice default themes 
+```{r}
+plot_imdb = plot_imdb + theme_classic(base_size = 20) 
+plot_imdb
+```
+
+and axis labels
+```{r}
+plot_imdb + xlab("movie release year") + ylab("IMDB score")
+plot_imdb + xlab("movie release\n(year)") + ylab("IMDB score")
+plot_imdb=plot_imdb + xlab("movie release year") + ylab("IMDB score")
+```
+
+ggplot scale
+```{r}
+plot_imdb + scale_y_continuous(limits=c(0,10))+scale_x_continuous(limits=c(1975,2010))
+```
+
+ggplot statistics
+```{r}
+plot_imdb + stat_smooth(method="lm")
+plot_imdb + stat_smooth(method="lm",se=F)
+```
