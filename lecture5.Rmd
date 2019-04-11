@@ -72,3 +72,49 @@ ggsave(ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scal
 ```
 
 ##STRINGS ON STRINGS ON STRINGS
+
+We're going to use the stringr package
+
+using str_detect and str_subset: which one returns a logical?
+```{r}
+str_detect(movies_imdb$genres,"Action")
+str_subset(movies_imdb$genres,"Action")
+str_subset(movies_imdb$genres,"action")  ## what's up with this output? Why is it different than the line above? 
+```
+
+stringr and filter()
+```{r}
+action_movies = movies_imdb %>% filter(str_detect(genres,"Action"))
+action_movies
+
+## looks like more action movies have been made recently, but is this true? What's our null expectation given the data? 
+ggplot(action_movies,aes(x=title_year))+geom_histogram() + xlab("movie release (year)")
+```
+
+What about movies with a lead actor whose name begins with "Ch"
+```{r}
+movies_imdb %>% filter(str_detect(actor_1_name,"^Ch"))%>% select(actor_1_name,title_year,movie_title,everything())
+```
+
+What about movies with a lead actor whose name ends with "son"
+```{r}
+movies_imdb %>% filter(str_detect(actor_1_name,"on$"))%>% select(actor_1_name,title_year,movie_title,everything())
+```
+
+EVERYTHING IS CASE SENSITIVE
+use str_to_lower() and str_to_upper() to fix that
+
+
+Dates are fun
+```{r}
+library(lubridate)
+ymd(20101215)
+ymd("2010/12/15")
+ymd("2010Dec15")
+ymd("2010December15")
+date1=ymd("2010 Dec 15")
+
+year(date1)
+month(date1)
+mday(date1)
+```
