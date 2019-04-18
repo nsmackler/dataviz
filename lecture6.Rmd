@@ -1,0 +1,232 @@
+start your engines (load your packages)
+```{r}
+library(tidyverse)
+
+theme_set(theme_classic(base_size = 20)) 
+```
+
+For loop to read in files (first we list the files)
+```{r}
+list.files(path = "movies",full.names = F)
+
+list.files(path = "movies",full.names = F, pattern = ".txt")
+
+
+for (file_name in list.files(path = "movies",full.names = F, pattern = ".txt")){
+  print(file_name)}
+
+for (file_name in list.files(path = "movies",full.names = F, pattern = ".txt")){
+  print(paste0("movies/",file_name))}
+```
+
+Now that we know what it does, we can read them in. whoops
+```{r}
+for (file_name in list.files(path = "movies",full.names = F, pattern = ".txt")){
+ file=read_delim(paste0("movies/",file_name),delim = ",")
+ }
+```
+
+
+can we assign the name of the files? using assign()
+```{r}
+for (file_name in list.files(path = "movies",full.names = F, pattern = ".txt")){
+ assign(file_name,read_delim(paste0("movies/",file_name),delim = ","))
+ }
+```
+
+can we remove the ".txt" extension from the object name?
+```{r}
+for (file_name in list.files(path = "movies",full.names = F, pattern = ".txt")){
+  file_n=str_replace(file_name,".txt","")
+ assign(file_n,read_delim(paste0("movies/",file_name),delim = ","))
+}
+
+## clean up the extra objects
+rm(file_n)
+rm(file_name)
+```
+
+
+using lapply to make a list of files
+```{r}
+lapply(list.files(path = "movies",full.names = F, pattern = ".txt"),function(file_name){
+  file_n=str_replace(file_name,".txt","")
+  assign(file_n,read_delim(paste0("movies/",file_name),delim = ","))
+})
+```
+
+using lapply to make a list of files (save as object)
+```{r}
+files=lapply(list.files(path = "movies",full.names = F, pattern = ".txt"),function(file_name){
+  file_n=str_replace(file_name,".txt","")
+  assign(file_n,read_delim(paste0("movies/",file_name),delim = ","))
+})
+
+View(files[[1]])
+View(files[[2]])
+
+names(files)
+names(files)=list.files(path = "movies",full.names = F, pattern = ".txt")
+names(files)
+names(files)=str_replace(string=list.files(path = "movies",full.names = F, pattern = ".txt"),pattern = ".txt",replacement = "")
+names(files)
+
+View(files[["movies_imdb"]])
+View(files[["movies_rottentom"]])
+```
+
+Sets
+```{r}
+intersect(movies_imdb$movie_title, movies_rottentom$title) %>% View()
+union(movies_imdb$movie_title, movies_rottentom$title) %>% View()
+setdiff(movies_imdb$movie_title, movies_rottentom$title) %>% View()
+setdiff(movies_rottentom$title, movies_imdb$movie_title) %>% View()
+
+movies_rottentom$title %in% movies_imdb$movie_title %>% View()
+```
+
+Let's look at some distributions. 
+```{r}
+ggplot(data=movies_imdb,aes(x=imdb_score))+
+  geom_histogram()
+```
+
+what is a "bin"?
+```{r}
+ggplot(data=movies_imdb,aes(x=imdb_score))+
+  geom_histogram(bins=10)
+```
+
+what about "bin width"?
+```{r}
+ggplot(data=movies_imdb,aes(x=imdb_score))+
+  geom_histogram(binwidth = 0.1)
+```
+
+What about "bin width"?
+```{r}
+ggplot(data=movies_imdb,aes(x=imdb_score))+
+  geom_histogram(binwidth = 0.1)
+```
+
+What about comparing multiple distributions?
+```{r}
+ggplot(data=movies_imdb,aes(x=imdb_score,fill=color))+
+  geom_histogram(binwidth = 0.1)
+```
+
+stacked bar charts are confusing. what else can we do?
+```{r}
+ggplot(data=movies_imdb,aes(x=imdb_score,fill=color))+
+  geom_histogram(binwidth = 0.1, position = "dodge")+
+  scale_fill_brewer(palette = "Set1")
+
+ggplot(data=movies_imdb,aes(x=imdb_score,col=color))+
+  geom_freqpoly(binwidth = 0.1)+scale_color_brewer(palette = "Set1")
+```
+
+we have very different sample sizes here, which makes it hard to compare the two distributions. But we could use density plots. 
+```{r}
+movies_imdb %>% count(color)
+
+ggplot(data=movies_imdb,aes(x=imdb_score,fill=color)) +
+  geom_density()+scale_fill_brewer(palette = "Set1")
+```
+
+let's get rid of the NAs and make the density plots a bit transparent
+```{r}
+color_bw_movies=movies_imdb %>% filter(!is.na(color))
+
+ggplot(data=color_bw_movies,aes(x=imdb_score,fill=color))+geom_density(alpha=0.5)+scale_fill_brewer(palette = "Set1")
+```
+
+Ohhhh - looks like B/W movies are higher rated (on average) compared to color. We can test this a couple of ways. 
+```{r}
+##T-test (can be paired or not)
+t.test(color_bw_movies$imdb_score~color_bw_movies$color)
+
+## Wilcoxon T-test (also known as a Mann-Whitney, can be paired or not)
+wilcox.test(color_bw_movies$imdb_score~color_bw_movies$color)
+```
+
+Let's join the movie data and do some more data exploration
+```{r}
+movies_joined=full_join(movies_imdb,movies_rottentom,by=c("movie_title"="title"))
+```
+
+Let's make a  IMDB, rotten tomatoes, and metacritic scores from the same distribution?
+```{r}
+WRITE THE CODE YOURSELVES (density plot? histogram? other ways?)
+```
+
+THEY AREN'T ON THE SAME SCALE, LET'S FIX THAT
+use the scale() function
+
+Another way to compare distributions: Quantile-Quantile plots
+```{r}
+qqplot(movies_joined$imdb_score,movies_joined$rotten_tomatoes)
+
+qqplot(movies_joined$rotten_tomatoes,movies_joined$metacritic)
+```
+
+Q-Q plots from the same distribution fall on the x=y line (slope=1, intercept=0) 
+```{r}
+b=rnorm(1000)
+a=rnorm(1000)
+qqplot(a,b)
+abline(0,1) ## add a line to the plot with an intercept of 0 and a slope of 1
+```
+
+
+Do action movies have a higher IMDB score? 
+```{r}
+movies_imdb = movies_imdb %>% 
+  mutate(action=str_detect(genres,"Action"))
+ggplot(movies_imdb,aes(x=imdb_score,fill=action))+geom_density(alpha=0.5)+scale_fill_brewer(palette = "Set1")
+``` 
+
+Correlations among variables
+```{r}
+movies_joined %>% 
+  select(imdb_score,rotten_tomatoes,metacritic,budget) %>%
+  cor()
+``` 
+
+Correlations among variables
+```{r}
+movies_joined %>% 
+  select(imdb_score,rotten_tomatoes,metacritic,budget) %>%
+  na.omit() %>%
+  cor()
+``` 
+
+```{r}
+library(corrplot) # or corrgram, up to you
+movies_joined %>% 
+    select(imdb_score,rotten_tomatoes,metacritic,budget) %>%
+    na.omit() %>%
+    cor() %>% 
+    corrplot(method = "ellipse")
+```
+
+
+Spotting outliers
+```{r}
+movies_imdb %>% 
+  ggplot(aes(x=budget))+
+  geom_histogram(bins=20)
+
+movies_imdb %>% 
+  ggplot(aes(x=budget))+
+  geom_histogram(bins=100)
+
+```
+
+
+bringing them in closer (log scale)
+```{r}
+movies_imdb %>% 
+  ggplot(aes(x=budget))+
+  geom_histogram(bins=100)+
+  scale_x_log10()
+```
