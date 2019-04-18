@@ -229,3 +229,35 @@ movies_imdb %>%
   geom_histogram(bins=100)+
   scale_x_log10()
 ```
+
+
+plotting lots of distributions
+```{r}
+library(ggridges)
+
+movies_imdb %>% 
+  ggplot(aes(x=budget,y=color))+
+  geom_density_ridges(colour="white",fill="steelblue4")+
+  theme_classic(base_size=10) +
+  scale_x_log10()
+```
+
+
+it can scale to many distributions
+```{r}
+
+movies_imdb %>% 
+  ggplot(aes(x=factor(title_year),y=budget))+
+  geom_violin(fill="steelblue4")+
+  theme_classic(base_size=10) +
+  scale_y_log10()
+
+library(ggridges)
+
+movies_imdb %>% 
+  ggplot(aes(x=budget,y=factor(title_year)))+
+  geom_density_ridges(colour="white",fill="steelblue4")+
+  theme_classic(base_size=10) +
+  scale_x_log10()
+
+```
