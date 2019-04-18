@@ -154,12 +154,28 @@ movies_joined=full_join(movies_imdb,movies_rottentom,by=c("movie_title"="title")
 ```
 
 Let's make a  IMDB, rotten tomatoes, and metacritic scores from the same distribution?
-
-WRITE THE CODE YOURSELVES (density plot? histogram? other ways?)
+```{r}
+movies_joined %>% 
+    select(movie_title,metacritic,imdb_score,rotten_tomatoes) %>%
+    gather(key=source,value = score,c(metacritic,imdb_score,rotten_tomatoes)) %>%
+    ggplot(aes(x=score,fill=source))+
+    geom_density(alpha=0.5) +
+    scale_fill_brewer(palette = "Set1")
+```
 
 THEY AREN'T ON THE SAME SCALE, LET'S FIX THAT
 use the scale() function
+```{r}
+movies_joined %>% 
+    select(movie_title,metacritic,imdb_score,rotten_tomatoes) %>%
+    gather(key=source,value = score,c(metacritic,imdb_score,rotten_tomatoes)) %>%
+    group_by(source) %>%
+    mutate(score=scale(score)) %>%
+    ggplot(aes(x=score,fill=source))+
+    geom_density(alpha=0.5) +
+    scale_fill_brewer(palette = "Set1")
 
+```
 Another way to compare distributions: Quantile-Quantile plots
 ```{r}
 qqplot(movies_joined$imdb_score,movies_joined$rotten_tomatoes)
