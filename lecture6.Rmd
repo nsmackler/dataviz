@@ -11,17 +11,17 @@ list.files(path = "movies",full.names = F)
 
 list.files(path = "movies",full.names = F, pattern = ".txt")
 
-
-for (file_name in list.files(path = "movies",full.names = F, pattern = ".txt")){
+files=list.files(path = "movies",full.names = F, pattern = ".txt")
+for (file_name in files){
   print(file_name)}
 
-for (file_name in list.files(path = "movies",full.names = F, pattern = ".txt")){
+for (file_name in files){
   print(paste0("movies/",file_name))}
 ```
 
 Now that we know what it does, we can read them in. whoops
 ```{r}
-for (file_name in list.files(path = "movies",full.names = F, pattern = ".txt")){
+for (file_name in files){
  file=read_delim(paste0("movies/",file_name),delim = ",")
  }
 ```
@@ -29,7 +29,7 @@ for (file_name in list.files(path = "movies",full.names = F, pattern = ".txt")){
 
 can we assign the name of the files? using assign()
 ```{r}
-for (file_name in list.files(path = "movies",full.names = F, pattern = ".txt")){
+for (file_name in files){
  assign(file_name,read_delim(paste0("movies/",file_name),delim = ","))
  }
 ```
@@ -49,17 +49,15 @@ rm(file_name)
 
 using lapply to make a list of files
 ```{r}
-lapply(list.files(path = "movies",full.names = F, pattern = ".txt"),function(file_name){
-  file_n=str_replace(file_name,".txt","")
-  assign(file_n,read_delim(paste0("movies/",file_name),delim = ","))
+lapply(files,function(file_name){
+  read_delim(paste0("movies/",file_name),delim = ",")
 })
 ```
 
 using lapply to make a list of files (save as object)
 ```{r}
 files=lapply(list.files(path = "movies",full.names = F, pattern = ".txt"),function(file_name){
-  file_n=str_replace(file_name,".txt","")
-  assign(file_n,read_delim(paste0("movies/",file_name),delim = ","))
+  read_delim(paste0("movies/",file_name),delim = ",")
 })
 
 View(files[[1]])
@@ -87,6 +85,7 @@ movies_rottentom$title %in% movies_imdb$movie_title %>% View()
 
 Let's look at some distributions. 
 ```{r}
+movies_imdb=movies[["movies_imdb.txt"]]
 ggplot(data=movies_imdb,aes(x=imdb_score))+
   geom_histogram()
 ```
