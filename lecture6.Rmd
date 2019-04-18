@@ -155,9 +155,8 @@ movies_joined=full_join(movies_imdb,movies_rottentom,by=c("movie_title"="title")
 ```
 
 Let's make a  IMDB, rotten tomatoes, and metacritic scores from the same distribution?
-```{r}
+
 WRITE THE CODE YOURSELVES (density plot? histogram? other ways?)
-```
 
 THEY AREN'T ON THE SAME SCALE, LET'S FIX THAT
 use the scale() function
