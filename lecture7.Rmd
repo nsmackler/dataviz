@@ -1,0 +1,113 @@
+```{r}
+library(tidyverse)
+
+theme_set(theme_classic(base_size = 20)) 
+```
+
+
+Let's join the movie data and do some more data exploration
+```{r}
+movies_joined=full_join(movies_imdb,movies_rottentom,by=c("movie_title"="title"))
+```
+
+
+Another way to compare distributions: Quantile-Quantile plots
+```{r}
+qqplot(movies_joined$imdb_score,movies_joined$rotten_tomatoes)
+
+qqplot(movies_joined$rotten_tomatoes,movies_joined$metacritic)
+```
+
+Q-Q plots from the same distribution fall on the x=y line (slope=1, intercept=0) 
+```{r}
+b=rnorm(1000)
+a=rnorm(1000)
+qqplot(a,b)
+abline(0,1) ## add a line to the plot with an intercept of 0 and a slope of 1
+```
+
+
+Do action movies have a higher IMDB score? 
+```{r}
+movies_imdb = movies_imdb %>% 
+  mutate(action=str_detect(genres,"Action"))
+ggplot(movies_imdb,aes(x=imdb_score,fill=action))+geom_density(alpha=0.5)+scale_fill_brewer(palette = "Set1")
+``` 
+
+Correlations among variables
+```{r}
+movies_joined %>% 
+  select(imdb_score,rotten_tomatoes,metacritic,budget) %>%
+  cor()
+``` 
+
+Correlations among variables
+```{r}
+movies_joined %>% 
+  select(imdb_score,rotten_tomatoes,metacritic,budget) %>%
+  na.omit() %>%
+  cor()
+``` 
+
+```{r}
+library(corrplot) # or corrgram, up to you
+movies_joined %>% 
+    select(imdb_score,rotten_tomatoes,metacritic,budget) %>%
+    na.omit() %>%
+    cor() %>% 
+    corrplot(method = "ellipse")
+```
+
+
+Spotting outliers
+```{r}
+movies_imdb %>% 
+  ggplot(aes(x=budget))+
+  geom_histogram(bins=20)
+
+movies_imdb %>% 
+  ggplot(aes(x=budget))+
+  geom_histogram(bins=100)
+
+```
+
+
+bringing them in closer (log scale)
+```{r}
+movies_imdb %>% 
+  ggplot(aes(x=budget))+
+  geom_histogram(bins=100)+
+  scale_x_log10()
+```
+
+
+plotting lots of distributions
+```{r}
+library(ggridges)
+
+movies_imdb %>% 
+  ggplot(aes(x=budget,y=color))+
+  geom_density_ridges(colour="white",fill="steelblue4")+
+  theme_classic(base_size=10) +
+  scale_x_log10()
+```
+
+
+it can scale to many distributions
+```{r}
+
+movies_imdb %>% 
+  ggplot(aes(x=factor(title_year),y=budget))+
+  geom_violin(fill="steelblue4")+
+  theme_classic(base_size=10) +
+  scale_y_log10()
+
+library(ggridges)
+
+movies_imdb %>% 
+  ggplot(aes(x=budget,y=factor(title_year)))+
+  geom_density_ridges(colour="white",fill="steelblue4")+
+  theme_classic(base_size=10) +
+  scale_x_log10()
+
+```
