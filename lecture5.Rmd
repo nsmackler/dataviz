@@ -84,12 +84,14 @@ arranging multiple figures with gridArrange
 library(gridExtra)
 plot1=ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_hue(l=45)
 plot2=ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_hue(l=45,c=50)
-grid.arrange(plot1,plot2,nrow=2)
+grid.arrange(plot1,plot2,nrow=1)
 ```
 
 Can we save these figures? How should we save them?
 ```{r}
-ggsave(ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_brewer(palette = "Set1"),file="drinks.pdf",width=10,height = 4)
+drinks_plot=ggplot(data=drinks_long,aes(x=year,y=gallons,fill=type))+geom_area()+scale_fill_brewer(palette = "Set1")
+drinks_plot
+ggsave(drinks_plot,file="~/Downloads/drinks.pdf",width=10,height = 4)
 ```
 
 ##STRINGS ON STRINGS ON STRINGS
