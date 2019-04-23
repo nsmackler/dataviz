@@ -37,7 +37,7 @@ qqnorm(movies_joined$rotten_tomatoes)
 ## after z-scoring (to get on same scale) 
 qqnorm(scale(movies_joined$rotten_tomatoes),main = "Rotten Tomatoes")
 ## adding a line of x=y: slope (b) = 1 and intercept (a) = 0
-abline(a=0,b=1)
+abline(a=0,b=1,col="red",lwd=3)
 ```
 
 Let's do a quick quiz: which dataset is more normally distributed? 
@@ -55,7 +55,7 @@ Q-Q plots from the same distribution fall on the x=y line (slope=1, intercept=0)
 b=rnorm(1000) ## randomly draw 1000 samples from a normal distribution
 a=rnorm(1000) 
 qqplot(a,b)
-abline(0,1)
+abline(0,1,col="red",lwd=5)
 ```
 
 Challenge: let's plot the eCDFs for 1000 draws of a normal distribution, log-normal, and uniform. 
@@ -92,7 +92,7 @@ movies_joined %>%
 
 Spotting outliers
 ```{r}
-movies_imdb %>% 
+files[["movies_imdb"]] %>% 
   ggplot(aes(x=budget))+
   geom_histogram(bins=100)
 
@@ -101,7 +101,7 @@ movies_imdb %>%
 
 bringing them in closer (log scale)
 ```{r}
-movies_imdb %>% 
+files[["movies_imdb"]]  %>% 
   ggplot(aes(x=budget))+
   geom_histogram(bins=100)+
   scale_x_log10()
