@@ -64,7 +64,10 @@ Do action movies have a higher IMDB score?
 ```{r}
 movies_imdb = files[["movies_imdb"]] %>% 
   mutate(action=str_detect(genres,"Action"))
-ggplot(movies_imdb,aes(x=imdb_score,fill=action))+geom_density(alpha=0.5)+scale_fill_brewer(palette = "Set1")
+
+ggplot(movies_imdb,aes(x=imdb_score,fill=action))+
+  geom_density(alpha=0.5)+
+  scale_fill_brewer(palette = "Set1")
 ``` 
 
 Correlations among variables
