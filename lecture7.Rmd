@@ -105,7 +105,7 @@ movies_imdb %>%
 ```
 
 
-plotting multiple  distributions
+plotting multiple distributions
 ```{r}
 library(ggridges)
 
