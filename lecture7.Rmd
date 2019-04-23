@@ -5,17 +5,49 @@ theme_set(theme_classic(base_size = 20))
 ```
 
 
+using lapply to make a list of files (save as object)
+```{r}
+files=lapply(list.files(path = "movies",full.names = F, pattern = ".txt"),function(file_name){
+  read_delim(paste0("movies/",file_name),delim = ",")
+})
+
+files[[1]]
+files[[2]]
+
+names(files)
+names(files)=list.files(path = "movies",full.names = F, pattern = ".txt")
+names(files)
+names(files)=str_replace(string=list.files(path = "movies",full.names = F, pattern = ".txt"),pattern = ".txt",replacement = "")
+names(files)
+
+files[["movies_imdb"]]
+files[["movies_rottentom"]]
+```
+
 Let's join the movie data and do some more data exploration
 ```{r}
-movies_joined=full_join(movies_imdb,movies_rottentom,by=c("movie_title"="title"))
+movies_joined=full_join(files[["movies_imdb"]],files[["movies_rottentom"]],by=c("movie_title"="title"))
 ```
 
 
-Another way to compare distributions: Quantile-Quantile plots
+Another way to compare distributions: Quantile-Quantile (Q-Q) plots
+We can compare against a normal distribution
+```{r}
+qqnorm(movies_joined$rotten_tomatoes)
+## after z-scoring (to get on same scale) 
+qqnorm(scale(movies_joined$rotten_tomatoes),main = "Rotten Tomatoes")
+## adding a line of x=y: slope (b) = 1 and intercept (a) = 0
+abline(a=0,b=1)
+```
+
+Let's do a quick quiz: which dataset is more normally distributed? 
+IMDB, rotten tomato, or metacritic scores? 
+
+QQ plots of two distributions
 ```{r}
 qqplot(movies_joined$imdb_score,movies_joined$rotten_tomatoes)
 
-qqplot(movies_joined$rotten_tomatoes,movies_joined$metacritic)
+qqplot(movies_joined$imdb_score,movies_joined$metacritic)
 ```
 
 Q-Q plots from the same distribution fall on the x=y line (slope=1, intercept=0) 
@@ -23,22 +55,15 @@ Q-Q plots from the same distribution fall on the x=y line (slope=1, intercept=0)
 b=rnorm(1000)
 a=rnorm(1000)
 qqplot(a,b)
-abline(0,1) ## add a line to the plot with an intercept of 0 and a slope of 1
+abline(0,1)
 ```
 
 
 Do action movies have a higher IMDB score? 
 ```{r}
-movies_imdb = movies_imdb %>% 
+movies_imdb = files[["movies_imdb"]] %>% 
   mutate(action=str_detect(genres,"Action"))
 ggplot(movies_imdb,aes(x=imdb_score,fill=action))+geom_density(alpha=0.5)+scale_fill_brewer(palette = "Set1")
-``` 
-
-Correlations among variables
-```{r}
-movies_joined %>% 
-  select(imdb_score,rotten_tomatoes,metacritic,budget) %>%
-  cor()
 ``` 
 
 Correlations among variables
@@ -63,10 +88,6 @@ Spotting outliers
 ```{r}
 movies_imdb %>% 
   ggplot(aes(x=budget))+
-  geom_histogram(bins=20)
-
-movies_imdb %>% 
-  ggplot(aes(x=budget))+
   geom_histogram(bins=100)
 
 ```
@@ -81,12 +102,13 @@ movies_imdb %>%
 ```
 
 
-plotting lots of distributions
+plotting multiple  distributions
 ```{r}
 library(ggridges)
 
 movies_imdb %>% 
-  ggplot(aes(x=budget,y=color))+
+  mutate(action=str_detect(genres,"Comedy")) %>%
+  ggplot(aes(x=budget,y=action))+
   geom_density_ridges(colour="white",fill="steelblue4")+
   theme_classic(base_size=10) +
   scale_x_log10()
@@ -110,4 +132,60 @@ movies_imdb %>%
   theme_classic(base_size=10) +
   scale_x_log10()
 
+```
+
+
+Sampling from a distribution: Binomial
+```{r}
+cookie_jar=rep.int(x=c("chocolate chip", "oatmeal raisin"),times=c(150,150))
+
+sample(x=cookie_jar,size = 10)
+
+library(infer)
+tibble(cchip=cookie_jar)  %>% 
+  rep_sample_n(size = 10)
+```
+
+
+## sampling >1 time using the "rep_sample_n" function. Here we are sampling 100x
+```{r}
+tibble(cchip=cookie_jar)  %>% 
+  rep_sample_n(size = 10,reps = 100)
+```
+
+Now plot
+```{r}
+tibble(cchip=cookie_jar)  %>% 
+  rep_sample_n(size = 10,reps = 100) %>% 
+  group_by(replicate) %>% summarize(count=sum(cchip="chocolate chip")) %>%
+  ggplot(aes(x=count))+geom_histogram()
+```
+
+Can you show me what this looks like if we sample 100 cookies 1000 times?
+
+Fisher's exact and Hypergeometric tests (enrichment tests)
+``` {r}
+MandMs=rep.int(x=c("red", "orange", "yellow", "green", "blue", "brown"),times=c(12, 5, 10, 5, 6, 15))
+```
+
+call specific colors from data frame/tibble
+```{r}
+data.frame(mmcolor=MandMs) %>% 
+  ggplot(aes(x=mmcolor,fill=mmcolor))+
+  geom_bar() +
+  xlab("Color")
+
+data.frame(mmcolor=MandMs) %>% 
+  ggplot(aes(x=mmcolor,fill=I(mmcolor)))+
+  geom_bar() +
+  xlab("Color")
+```
+
+A binomial test, but without replacement, so it works well for small sample sizes
+```{r}
+## let's say we picked out 5 M&Ms. 4 were green and 1 was brown. Did we draw from an unbiased distribution? 
+grabbag=tibble(color=rep(x=c( "green", "brown"),times=c(4,1)))
+
+## we'll walk through this together
+phyper(4,5,48,5,lower.tail = F)
 ```
