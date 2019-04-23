@@ -52,12 +52,13 @@ qqplot(movies_joined$imdb_score,movies_joined$metacritic)
 
 Q-Q plots from the same distribution fall on the x=y line (slope=1, intercept=0) 
 ```{r}
-b=rnorm(1000)
-a=rnorm(1000)
+b=rnorm(1000) ## randomly draw 1000 samples from a normal distribution
+a=rnorm(1000) 
 qqplot(a,b)
 abline(0,1)
 ```
 
+Challenge: let's plot the eCDFs for 1000 draws of a normal distribution, log-normal, and uniform. 
 
 Do action movies have a higher IMDB score? 
 ```{r}
@@ -74,6 +75,8 @@ movies_joined %>%
   cor()
 ``` 
 
+
+Using corrgram (or corrplot, whichever you prefer)
 ```{r}
 library(corrplot) # or corrgram, up to you
 movies_joined %>% 
