@@ -1,0 +1,289 @@
+```{r}
+library(tidyverse)
+
+theme_set(theme_classic(base_size = 20)) 
+```
+
+
+using lapply to make a list of files (save as object)
+```{r}
+files=lapply(list.files(path = "movies",full.names = F, pattern = ".txt"),function(file_name){
+  read_delim(paste0("movies/",file_name),delim = ",")
+})
+names(files)=str_replace(string=list.files(path = "movies",full.names = F, pattern = ".txt"),pattern = ".txt",replacement = "")
+names(files)
+movies_joined=full_join(files[["movies_imdb"]],files[["movies_rottentom"]],by=c("movie_title"="title"))
+
+```
+
+Pirate plot. Arrrrr, from the `ggpirate` package
+```{r}
+devtools::install_github("mikabr/ggpirate")
+library(ggpirate)
+
+iris %>% ggplot(aes(x=Species,y=Sepal.Width))+
+  geom_pirate(aes(colour = Species, fill = Species))
+
+
+iris %>% ggplot(aes(x=Species,y=Sepal.Width))+
+  geom_pirate(aes(colour = Species, fill = Species),bars=F)
+```
+
+Antother correlation plot, from the `psych` package
+```{r}
+library(psych)
+
+movies_joined %>% 
+    select(imdb_score,rotten_tomatoes,metacritic,budget) %>%
+    pairs.panels()
+```
+
+
+Sampling from a distribution: Binomial
+```{r}
+cookie_jar=rep.int(x=c("chocolate chip", "oatmeal raisin"),times=c(1000,1000))
+
+sample(x=cookie_jar,size = 10)
+
+library(infer)
+tibble(cchip=cookie_jar)  %>% 
+  rep_sample_n(size = 10)
+```
+
+
+## sampling >1 time using the "rep_sample_n" function. Here we are sampling 100x
+```{r}
+tibble(cchip=cookie_jar)  %>% 
+  rep_sample_n(size = 10,reps = 100)
+```
+
+Now plot
+```{r}
+tibble(cchip=cookie_jar)  %>% 
+  rep_sample_n(size = 10,reps = 100) %>% 
+  group_by(replicate) %>% 
+  summarize(count=sum(cchip=="chocolate chip")) %>%
+  ggplot(aes(x=count))+
+  geom_histogram()
+```
+
+Can you show me what this looks like if we sample 100 cookies 1000 times?
+
+Now plot with proportions
+```{r}
+tibble(cchip=cookie_jar)  %>% 
+  rep_sample_n(size = 100,reps = 1000) %>% 
+  group_by(replicate) %>% 
+  summarize(prop=sum(cchip=="chocolate chip")/n()) %>%
+  ggplot(aes(x=prop))+
+  geom_histogram()
+```
+
+Let's take one subsample from our larger population
+```{r}
+cookie_sample=tibble(cchip=cookie_jar)  %>% 
+  rep_sample_n(size = 100,reps = 1) 
+
+cookie_sample %>% count(cchip)
+```
+
+Let's bootstrap this subsample 1000x to estimate a confidence interval on our point estimate using some other functions in the `infer` package
+```{r}
+boot_cookie=cookie_sample %>% 
+  specify(response = cchip,success = "chocolate chip") %>% 
+  generate(reps = 1000) 
+
+boot_cookie %>% 
+  calculate(stat = "prop") %>%
+  ggplot(aes(x=stat))+
+  geom_histogram()
+```
+
+calculate a 95% CI
+```{r}
+boot_cookie %>% 
+  calculate(stat = "prop") %>%
+  get_ci(level = 0.95, type = "percentile")
+
+## what about the se of the point estimate?
+p_cchip=sum(cookie_sample$cchip=="chocolate chip")/length(cookie_sample$cchip)
+1.96*sqrt((p_cchip*(1-p_cchip))/length(cookie_sample$cchip))
+```
+
+What happens if the true proportion of cookies is closer to 1 or 0? 
+```{r}
+set.seed(100)
+cookie_jar=rep.int(x=c("chocolate chip", "oatmeal raisin"),times=c(950,50))
+cookie_sample=tibble(cchip=cookie_jar)  %>% 
+  rep_sample_n(size = 100,reps = 1) 
+
+boot_cookie=cookie_sample %>% 
+  specify(response = cchip,success = "chocolate chip") %>% 
+  generate(reps = 1000) 
+
+boot_cookie %>% 
+  calculate(stat = "prop") %>%
+  get_ci(level = 0.95, type = "percentile")
+
+## what about the se of the point estimate?
+p_cchip=sum(cookie_sample$cchip=="chocolate chip")/length(cookie_sample$cchip)
+p_cchip
+1.96*sqrt((p_cchip*(1-p_cchip))/length(cookie_sample$cchip))
+```
+
+What about when we have a smaller subsample?
+```{r}
+set.seed(20)
+cookie_jar=rep.int(x=c("chocolate chip", "oatmeal raisin"),times=c(950,50))
+cookie_sample=tibble(cchip=cookie_jar)  %>% 
+  rep_sample_n(size = 25,reps = 1) 
+
+boot_cookie=cookie_sample %>% 
+  specify(response = cchip,success = "chocolate chip") %>% 
+  generate(reps = 1000) 
+
+boot_cookie %>% 
+  calculate(stat = "prop") %>%
+  get_ci(level = 0.95, type = "percentile")
+
+## what about the se of the point estimate?
+p_cchip=sum(cookie_sample$cchip=="chocolate chip")/length(cookie_sample$cchip)
+p_cchip
+1.96*sqrt((p_cchip*(1-p_cchip))/length(cookie_sample$cchip))
+```
+
+Do movies made before  movies have a higher IMDB rating than romance movies? Can we use a permutation test?
+
+```{r}
+movies_action=files[["movies_imdb"]] %>% 
+  mutate(action=str_detect(genres,"Action")) %>%
+  select(action,title_year,imdb_score)
+
+movies_action%>%
+  ggplot(aes(x=action,y=imdb_score))+
+  geom_pirate(aes(colour = action),bars = F)+
+  scale_color_brewer(palette = "Dark2")
+```
+
+
+```{r}
+set.seed(10) ##this allows us to work with the same random sample
+movies_action_sample <- movies_action %>% 
+  group_by(action) %>%
+  sample_n(25) %>% 
+  ungroup()
+
+movies_action_sample%>%
+  ggplot(aes(x=action,y=imdb_score))+
+  geom_pirate(aes(colour = action),bars = F)+
+  scale_color_brewer(palette = "Dark2")
+```
+
+hypothesis testing with `infer` and using permutations
+```{r}
+movies_action_sample %>% 
+  specify(formula = imdb_score ~ action) %>% 
+  calculate(stat = "diff in means", order = c("TRUE", "FALSE"))
+
+movies_action_sample %>% 
+  specify(formula = imdb_score ~ action) %>%  ## this shuffles the relationships
+  hypothesize(null = "independence") %>% 
+  generate(reps = 1,type="permute") %>% 
+  calculate(stat = "diff in means", order = c("TRUE", "FALSE"))
+
+movies_action_sample %>% 
+  specify(formula = imdb_score ~ action) %>% 
+  hypothesize(null = "independence") %>% 
+  generate(reps = 100) %>% 
+  calculate(stat = "diff in means", order = c("TRUE", "FALSE"))%>%
+  visualise() 
+```
+
+
+compare permutations to bootstrapping
+```{r}
+permuted=movies_action_sample %>% 
+  specify(formula = imdb_score ~ action) %>% 
+  hypothesize(null = "independence") %>% 
+  generate(reps = 100,type="permute") %>% 
+  calculate(stat = "diff in means", order = c("TRUE", "FALSE"))
+permuted$random="permutation"
+
+bootstrapped=movies_action_sample %>% 
+  specify(formula = imdb_score ~ action) %>% 
+  hypothesize(null = "independence") %>% 
+  generate(reps = 100,type="bootstrap") %>% 
+  calculate(stat = "diff in means", order = c("TRUE", "FALSE"))
+bootstrapped$random="bootstrap"
+
+combined=rbind(bootstrapped,permuted) #combine them
+
+ggplot(combined,aes(x=stat,fill=random))+geom_histogram(position = "dodge")
+```
+
+bootstrapping regression coefficients using the `mosiac` package
+first we can estimate a regression coefficient
+```{r}
+set.seed(100) ##this allows us to work with the same random sample
+movies_subset=movies_joined %>%
+  select(budget,title_year,movie_title,duration,imdb_score,metacritic,rotten_tomatoes) %>%
+  sample_n(100)
+
+lm(rotten_tomatoes~imdb_score,movies_subset)
+
+library(broom)  ## to view tidy summaries
+tidy(lm(rotten_tomatoes~imdb_score,movies_subset))
+
+```
+
+```{r}
+library(mosaic)
+lm_boot=do(100) * lm(rotten_tomatoes~imdb_score, 
+                     data = sample(movies_subset,replace=T))
+confint(lm_boot)
+```
+
+what happens if we add in multiple variables?
+```{r}
+lm_boot=do(100) * lm(rotten_tomatoes~imdb_score + budget, 
+                     data = sample(movies_subset,replace=T))
+confint(lm_boot)
+```
+
+
+
+
+
+
+
+
+Fisher's exact and Hypergeometric tests (enrichment tests)
+``` {r}
+MandMs=rep.int(x=c("red", "orange", "yellow", "green", "blue", "brown"),times=c(12, 5, 10, 5, 6, 15))
+```
+
+call specific colors from data frame/tibble
+```{r}
+data.frame(mmcolor=MandMs) %>% 
+  ggplot(aes(x=mmcolor,fill=mmcolor))+
+  geom_bar() +
+  xlab("Color")
+
+data.frame(mmcolor=MandMs) %>% 
+  ggplot(aes(x=mmcolor,fill=I(mmcolor)))+
+  geom_bar() +
+  xlab("Color")
+```
+
+A binomial test, but without replacement, so it works well for small sample sizes
+```{r}
+## let's say we picked out 10 M&Ms. 4 were green and 6 were not green. Did we draw from an unbiased distribution? 
+grabbag=tibble(color=rep(x=c( "green", "brown"),times=c(4,6)))
+
+## we'll walk through this together
+phyper(4,5,48,5,lower.tail = F)
+
+fisher.test(as.matrix(tibble(green = c(4, 1), notgreen = c(6,48))),alternative = "t")
+```
+
+
