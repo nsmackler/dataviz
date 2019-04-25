@@ -18,10 +18,11 @@ movies_joined=full_join(files[["movies_imdb"]],files[["movies_rottentom"]],by=c(
 
 Pirate plot. Arrrrr, from the `ggpirate` package
 ```{r}
-devtools::install_github("mikabr/ggpirate")
+#devtools::install_github("mikabr/ggpirate")
 library(ggpirate)
 
-iris %>% ggplot(aes(x=Species,y=Sepal.Width))+
+iris %>% 
+  ggplot(aes(x=Species,y=Sepal.Width))+
   geom_pirate(aes(colour = Species, fill = Species))
 
 
@@ -81,6 +82,7 @@ tibble(cchip=cookie_jar)  %>%
 
 Let's take one subsample from our larger population
 ```{r}
+set.seed(7)
 cookie_sample=tibble(cchip=cookie_jar)  %>% 
   rep_sample_n(size = 100,reps = 1) 
 
@@ -91,7 +93,7 @@ Let's bootstrap this subsample 1000x to estimate a confidence interval on our po
 ```{r}
 boot_cookie=cookie_sample %>% 
   specify(response = cchip,success = "chocolate chip") %>% 
-  generate(reps = 1000) 
+  generate(reps = 1000,type = "bootstrap") 
 
 boot_cookie %>% 
   calculate(stat = "prop") %>%
@@ -218,7 +220,8 @@ bootstrapped$random="bootstrap"
 
 combined=rbind(bootstrapped,permuted) #combine them
 
-ggplot(combined,aes(x=stat,fill=random))+geom_histogram(position = "dodge")
+ggplot(combined,aes(x=stat,fill=random))+
+  geom_histogram(position = "dodge")
 ```
 
 bootstrapping regression coefficients using the `mosiac` package
