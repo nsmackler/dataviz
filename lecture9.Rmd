@@ -1,0 +1,140 @@
+```{r}
+library(tidyverse)
+
+theme_set(theme_classic(base_size = 20)) 
+```
+
+using lapply to make a list of files (save as object)
+```{r}
+files=lapply(list.files(path = "movies",full.names = F, pattern = ".txt"),function(file_name){
+  read_delim(paste0("movies/",file_name),delim = ",")
+})
+names(files)=str_replace(string=list.files(path = "movies",full.names = F, pattern = ".txt"),pattern = ".txt",replacement = "")
+names(files)
+movies_joined=full_join(files[["movies_imdb"]],files[["movies_rottentom"]],by=c("movie_title"="title"))
+
+```
+
+bootstrapping for a confidence interval on a mean
+```{r}
+movies_action=files[["movies_imdb"]] %>% 
+  mutate(action=str_detect(genres,"Action")) %>%
+  select(action,title_year,imdb_score)
+
+set.seed(10) ##this allows us to work with the same random sample
+movies_action_sample <- movies_action %>% 
+  sample_n(50)
+
+movies_action_sample %>% 
+    specify(response=imdb_score) %>% 
+    generate(reps = 100,type="bootstrap") %>%
+    calculate(stat="mean")%>%
+    visualize()
+
+movies_action_sample %>% 
+    specify(response=imdb_score) %>% 
+    generate(reps = 100,type="bootstrap") %>%
+    calculate(stat="mean") %>%
+    get_ci(level = 0.95, type = "percentile")
+```
+
+compare permutations to bootstrapping
+```{r}
+movies_action=files[["movies_imdb"]] %>% 
+  mutate(action=str_detect(genres,"Action")) %>%
+  select(action,title_year,imdb_score)
+
+set.seed(10) ##this allows us to work with the same random sample
+movies_action_sample <- movies_action %>% 
+  group_by(action) %>%
+  sample_n(25) %>% 
+  ungroup()
+
+permuted=movies_action_sample %>% 
+  specify(formula = imdb_score ~ action) %>% 
+  hypothesize(null = "independence") %>% 
+  generate(reps = 100,type="permute") %>% 
+  calculate(stat = "diff in means", order = c("TRUE", "FALSE"))
+permuted$random="permutation"
+
+bootstrapped=movies_action_sample %>% 
+  specify(formula = imdb_score ~ action) %>% 
+  hypothesize(null = "independence") %>% 
+  generate(reps = 100,type="bootstrap") %>% 
+  calculate(stat = "diff in means", order = c("TRUE", "FALSE"))
+bootstrapped$random="bootstrap"
+
+combined=rbind(bootstrapped,permuted) #combine them
+
+ggplot(combined,aes(x=stat))+
+  geom_histogram(fill="grey25")+
+  facet_wrap(~random,nrow = 2)
+```
+
+
+bootstrapping regression coefficients 
+first we can estimate a regression coefficient
+```{r}
+set.seed(100) ##this allows us to work with the same random sample
+movies_subset=movies_joined %>%
+  select(budget,title_year,movie_title,duration,imdb_score,metacritic,rotten_tomatoes) %>%
+  na.omit() %>%
+  sample_n(100)
+
+lm(rotten_tomatoes~imdb_score,movies_subset)
+
+library(broom)  ## to view tidy summaries
+tidy(lm(rotten_tomatoes~imdb_score,movies_subset))
+
+```
+
+bootstrap or permute regression coefficients
+```{r}
+movies_subset %>%
+    specify(rotten_tomatoes~imdb_score) %>%
+    generate(reps = 1000, type = "bootstrap") %>% 
+    calculate(stat = "slope") %>%
+    visualize()
+
+movies_subset %>%
+    specify(rotten_tomatoes~imdb_score) %>%
+    hypothesize(null = "independence") %>%
+    generate(reps = 1000, type = "permute") %>%
+    calculate(stat = "slope") %>%
+    visualize()
+```
+
+
+but this can't be expanded to multiple predictors using `infer`
+So we use the `mosiac` package
+```{r}
+library(mosaic)
+lm_boot=do(100) * lm(rotten_tomatoes~imdb_score, 
+                     data = sample(movies_subset,replace=T))
+confint(lm_boot)
+```
+
+what happens if we add in multiple variables?
+```{r}
+lm_boot=do(100) * lm(rotten_tomatoes~imdb_score + budget, 
+                     data = sample(movies_subset,replace=T))
+
+lm_boot %>% head()
+
+confint(lm_boot) 
+
+ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
+  geom_abline(intercept = lm_boot$Intercept,
+              slope=lm_boot$imdb_score,col="grey50",lwd=3)+
+  geom_point()+
+  geom_smooth(method="lm",se=F)
+```
+
+plot all of the bootstrap iterations, what's another way to plot this?
+```{r}
+ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
+  geom_abline(intercept = lm_boot$Intercept,
+              slope=lm_boot$imdb_score,col="grey70",lwd=3)+
+  geom_point()+
+  geom_abline(intercept=-54.8,slope=15.1,col="blue",lwd=2)
+```
