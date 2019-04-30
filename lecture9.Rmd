@@ -23,6 +23,7 @@ movies_action=files[["movies_imdb"]] %>%
 
 set.seed(10) ##this allows us to work with the same random sample
 movies_action_sample <- movies_action %>% 
+  filter(!is.na(imdb_score)) %>%
   sample_n(50)
 
 movies_action_sample %>% 
@@ -33,7 +34,7 @@ movies_action_sample %>%
 
 movies_action_sample %>% 
     specify(response=imdb_score) %>% 
-    generate(reps = 100,type="bootstrap") %>%
+    generate(reps = 1000,type="bootstrap") %>%
     calculate(stat="mean") %>%
     get_ci(level = 0.95, type = "percentile")
 ```
@@ -116,7 +117,7 @@ confint(lm_boot)
 
 what happens if we add in multiple variables?
 ```{r}
-lm_boot=do(100) * lm(rotten_tomatoes~imdb_score + budget, 
+lm_boot=do(1000) * lm(rotten_tomatoes~imdb_score + budget, 
                      data = sample(movies_subset,replace=T))
 
 lm_boot %>% head()
