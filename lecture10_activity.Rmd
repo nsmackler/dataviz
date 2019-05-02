@@ -1,0 +1,106 @@
+---
+title: "Lecture 10 in class activity"
+date: "5/2/2019"
+output: html_document
+---
+
+#  Multiple regression and interactions
+
+load in the data
+```{r}
+library(car)
+library(tidyverse)
+theme_set(theme_classic(base_size = 20)) 
+
+data("Salaries")
+head(Salaries)
+```
+
+Using the Salaries dataset from the car package:
+
+1. filter these data to observations less than 25 years since the PhD. 
+2. plot salary as a function of years since PhD, discipline, and sex (in one or two plots)
+```{r}
+
+```
+
+
+Fit a linear model predicting salary as a function of sex + yrs.since.phd + discipline.  
+
+Look at the coefficients using tidy(). 
+
+```{r}
+
+```
+
+In this model, how much is salary expected to increase for each year after the phd?
+
+Does the effect of years since phd depend on the sex of the professor? 
+
+Test this by fitting a model with an interaction between sex and yrs.since.phd
+```{r}
+
+```
+
+Using the diamonds data from the  ggplot2 package, filter this dataset to include only diamonds with Fair and Ideal cuts, and store the result in a new tibble called d.small.  The cut variable is stored as an ordered factor.  Change this to an unordered factor by first converting it to character, and then back to factor: as.character(), as.factor()
+```{r}
+data("diamonds")
+diamonds = diamonds %>% filter(cut %in% c("Ideal","Fair"))
+diamonds$cut = as.character(diamonds$cut)
+diamonds$cut = as.factor(diamonds$cut)
+```
+
+
+plot mapping price to y and carat to x.  
+Add points and a geom_smooth(method = 'lm') and facet the plot by the cut variable
+```{r}
+
+```
+
+Fit a model predicting price as a function of carat, cut and the interaction of those two variables.  Is the interaction significant?
+```{r}
+
+
+```
+
+
+Look at the levels of the cut variable using the levels() function.
+What is the reference level?
+
+```{r}
+
+
+```
+
+
+What is the expected increase in price for a one unit increase in carat at the reference level of cut?
+
+Now relevel the cut variable so that Ideal is the reference level.
+```{r}
+diamonds$cut = relevel(diamonds$cut, ref = 'Ideal')
+```
+ 
+Fit the model again and assess the new estimate for change in price with a one carat increase.
+```{r}
+d.model2 = lm(price~carat*cut, data = diamonds)
+tidy(d.model2)
+```
+
+Make the following data frame with two cuts and predict their prices using d.model2 and the predict() function
+```{r}
+df = data.frame(cut = c('Ideal','Fair'), carat = c(3,3))
+
+df$price = predict(d.model2, df)
+```
+
+Add points to the ggplot you made previously with these predicted values shown in red on the plot.  
+Map the carat variable to X, and the predicted price to Y
+```{r}
+ggplot(diamonds, aes(x = carat, y = price))+
+     geom_point(alpha=0.1) + 
+     geom_smooth(method = 'lm') + 
+     facet_grid(~cut)+ 
+    geom_point(data = df, aes(x = carat, y = price), color = "red")
+```
+
+Do the points fall where you expect them to?
