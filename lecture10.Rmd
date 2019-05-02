@@ -1,0 +1,191 @@
+```{r}
+library(tidyverse)
+
+theme_set(theme_classic(base_size = 20)) 
+```
+
+using lapply to make a list of files (save as object)
+```{r}
+files=lapply(list.files(path = "movies",full.names = F, pattern = ".txt"),function(file_name){
+  read_delim(paste0("movies/",file_name),delim = ",")
+})
+names(files)=str_replace(string=list.files(path = "movies",full.names = F, pattern = ".txt"),pattern = ".txt",replacement = "")
+names(files)
+movies_joined=full_join(files[["movies_imdb"]],files[["movies_rottentom"]],by=c("movie_title"="title"))
+
+
+## subset of the data
+set.seed(100) ##this allows us to work with the same random sample
+movies_subset=movies_joined %>%
+  select(budget,title_year,movie_title,duration,imdb_score,metacritic,rotten_tomatoes) %>%
+  na.omit() %>%
+  sample_n(100)
+```
+
+
+plotting different fits
+```{r}
+ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
+  geom_point()+
+  geom_smooth(method="lm") +
+  ggtitle("linear model")
+
+ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
+  geom_point()+
+  geom_smooth(formula = "y~exp(x)") +
+  ggtitle("exponential: y~exp(x)")
+
+ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
+  geom_point()+
+  geom_smooth(formula = "y~poly(x,2)") +
+  ggtitle("quadratic: y~poly(x,2)")
+```
+
+
+#Mediation using example mediation data
+```{r}
+mediation_data=read_csv("mediation_data.csv")
+
+## plot all 3
+library(gridExtra)
+grid.arrange(ggplot(mediation_data,aes(x=X,y=Y))+geom_point(),
+             ggplot(mediation_data,aes(x=X,y=M))+geom_point(),
+             ggplot(mediation_data,aes(x=M,y=Y))+geom_point(),
+             nrow=1)
+```
+
+model them to show the 3 pre-conditions are met: 
+```{r} 
+library(broom)
+model.0=lm(Y~X,mediation_data)
+tidy(model.0)
+model.M=lm(M~X,mediation_data)
+tidy(model.M)
+model.Y=lm(Y~X+M,mediation_data)
+tidy(model.Y)
+
+
+## proportion mediation: IDE/c', which is also (c-c')/c
+(coef(model.0)[2]-coef(model.Y)[2])/coef(model.0)[2]
+```
+
+bootstrap test for mediation
+```{r} 
+nboot=1000
+boot_list=lapply(1:nboot,function(iteration){
+  boot_data=sample(mediation_data,replace = T) ## resample with replacement
+  m1=lm(Y~X,boot_data) ## model for c
+  m2=lm(Y~X+M,boot_data)  ## model for c'
+  c1=coef(m1)[2]
+  cprime=coef(m2)[2]
+  return(c(c1,cprime))})
+
+boot_results=Reduce(rbind,boot_list) %>%
+  as_tibble()
+colnames(boot_results)=c("c","cprime")
+
+boot_results
+
+```
+
+calculate indirect effects and plot
+```{r}
+boot_results=boot_results %>% 
+  mutate(ide=c - cprime)
+
+boot_results %>% 
+  gather(key=path,value=effect) %>%
+  ggplot(aes(x=effect,fill=path))+
+  geom_histogram(position = "dodge")
+```
+
+
+estimate the signficance of the mediation 
+(note that this is a strong mediation effect)
+```{r}
+boot_results %>% 
+  summarize(sum(ide<0)/n())
+
+## complete mediation? 
+boot_results %>% 
+  summarize(median(cprime))
+```
+
+
+using the `mediation` package
+```{r}
+library(mediation)
+
+model.M=lm(M~X,mediation_data)
+tidy(model.M)
+model.Y=lm(Y~X+M,mediation_data)
+tidy(model.Y)
+
+med_model=mediate(model.M, model.Y, treat='X', mediator='M',
+                   boot=TRUE, sims=1000)
+
+summary(med_model)
+```
+
+#Visualizing multiple regression.
+First we explore the data and plot a few associations
+```{r}
+smoking=read_csv("smoking_data.csv")
+
+library(skimr)
+smoking %>% skim()
+
+library(ggbeeswarm)
+smoking %>%
+  ggplot(aes(x=smoke,y=lung_capacity))+
+  geom_beeswarm()
+```
+
+Being exposed to smoking increases lung capacity?
+```{r}
+smoking %>%
+  ggplot(aes(x=age,y=lung_capacity))+
+  geom_point()
+
+smoking %>%
+  ggplot(aes(x=age,y=lung_capacity,col=smoke))+
+  geom_beeswarm()
+
+smoking %>%
+  ggplot(aes(x=age,y=lung_capacity,col=smoke))+
+  geom_beeswarm()+
+  stat_smooth(method="lm")
+```
+
+smoking has an negative effect when we control for age. 
+```{r}
+model1=lm(formula = lung_capacity ~ smoke, data = smoking)
+
+model2=lm(formula = lung_capacity ~ age + smoke, data = smoking)
+
+tidy(model1)
+tidy(model2)
+```
+
+two ways to visualize this (what's another way?)
+```{r}
+#1 plot smoking variable vs. residuals of a model excluding smoking
+## note that this doesn't always work well for visualization, but at least the x-axis is interpretable
+y_given_x1=resid(lm(lung_capacity ~ age, data = smoking))
+tibble(smoke=smoking$smoke,y_given_x1=y_given_x1) %>%
+  ggplot(aes(x=smoke,y=y_given_x1))+
+  geom_beeswarm(alpha=0.1)
+
+#2 partial residuals, this usually works, but the x-axis can be less interpretable. 
+smoking$smoke_integer=as.numeric(as.factor(smoking$smoke))
+head(smoking$smoke_integer)
+x2_given_x1=resid(lm(smoke_integer ~ age, data = smoking))
+y_given_x1=resid(lm(lung_capacity ~ age, data = smoking))
+
+tibble(x2_given_x1,y_given_x1) %>%
+  ggplot(aes(x=x2_given_x1,y=y_given_x1))+
+  geom_point()+
+  stat_smooth(method="lm")
+
+```
+
