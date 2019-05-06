@@ -32,78 +32,14 @@ ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
 
 ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
   geom_point()+
-  geom_smooth(formula = "y~exp(x)") +
+  geom_smooth(formula = "y~exp(x)",method="lm") +
   ggtitle("exponential: y~exp(x)")
 
 ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
   geom_point()+
-  geom_smooth(formula = "y~poly(x,2)") +
+  geom_smooth(formula = "y~poly(x,2)",method="lm") +
   ggtitle("quadratic: y~poly(x,2)")
 ```
-
-
-#Visualizing multiple regression.
-First we explore the data and plot a few associations
-```{r}
-smoking=read_csv("smoking_data.csv")
-
-library(skimr)
-smoking %>% skim()
-
-library(ggbeeswarm)
-smoking %>%
-  ggplot(aes(x=smoke,y=lung_capacity))+
-  geom_beeswarm()
-```
-
-Being exposed to smoking increases lung capacity?
-```{r}
-smoking %>%
-  ggplot(aes(x=age,y=lung_capacity))+
-  geom_point()
-
-smoking %>%
-  ggplot(aes(x=age,y=lung_capacity,col=smoke))+
-  geom_beeswarm()
-
-smoking %>%
-  ggplot(aes(x=age,y=lung_capacity,col=smoke))+
-  geom_beeswarm()+
-  stat_smooth(method="lm")
-```
-
-smoking has an negative effect when we control for age. 
-```{r}
-model1=lm(formula = lung_capacity ~ smoke, data = smoking)
-
-model2=lm(formula = lung_capacity ~ age + smoke, data = smoking)
-
-tidy(model1)
-tidy(model2)
-```
-
-two ways to visualize this (what's another way?)
-```{r}
-#1 plot smoking variable vs. residuals of a model excluding smoking
-## note that this doesn't always work well for visualization, but at least the x-axis is interpretable
-y_given_x1=resid(lm(lung_capacity ~ age, data = smoking))
-tibble(smoke=smoking$smoke,y_given_x1=y_given_x1) %>%
-  ggplot(aes(x=smoke,y=y_given_x1))+
-  geom_beeswarm(alpha=0.1)
-
-#2 partial residuals, this usually works, but the x-axis can be less interpretable. 
-smoking$smoke_integer=as.numeric(as.factor(smoking$smoke))
-head(smoking$smoke_integer)
-x2_given_x1=resid(lm(smoke_integer ~ age, data = smoking))
-y_given_x1=resid(lm(lung_capacity ~ age, data = smoking))
-
-tibble(x2_given_x1,y_given_x1) %>%
-  ggplot(aes(x=x2_given_x1,y=y_given_x1))+
-  geom_point()+
-  stat_smooth(method="lm")
-
-```
-
 
 #Interactions
 
@@ -167,12 +103,14 @@ bootstrap test for mediation
 ```{r} 
 nboot=1000
 boot_list=lapply(1:nboot,function(iteration){
-  boot_data=sample(mediation_data,replace = T) ## resample with replacement
+  boot_data=sample_n(mediation_data,replace = T,size=nrow(mediation_data)) ## resample with replacement
   m1=lm(Y~X,boot_data) ## model for c
   m2=lm(Y~X+M,boot_data)  ## model for c'
   c1=coef(m1)[2]
   cprime=coef(m2)[2]
-  return(c(c1,cprime))})
+  return(c(c1,cprime))
+  }
+  )
 
 boot_results=Reduce(rbind,boot_list) %>%
   as_tibble()
