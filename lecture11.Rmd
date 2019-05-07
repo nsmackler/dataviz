@@ -73,7 +73,7 @@ tibble(x2_given_x1,y_given_x1) %>%
 ```{r}
 m=seq(1:100)
 one_error=1 - (1 - 0.05)^seq(1,100)
-qplot(m,one_error,xlab="m",ylab="P(at least 1 false positive")
+qplot(m,one_error,xlab="m",ylab="P(at least 1 false positive)")
 ```
 
 simulation with correlation of random variables
@@ -125,7 +125,7 @@ What is the Type II error rate?
 
 ###Bonferroni
 ```{r}
-bonftest = p > 0.00005
+bonftest = p > 0.05/1000
 summary(bonftest[1:900])
 summary(bonftest[901:1000])
 ```
@@ -135,7 +135,8 @@ Now what are the Type I and Type II error rates?
 ###Benjamini-Hochberg FDR
 ```{r}
 prank <- rank(p) ##rank p-values
-bh_fdr=p*length(prank)/prank
+m=1000 ## number of tests
+bh_fdr=p*m/prank
 
 bhtest= bh_fdr > 0.05
 summary(bhtest[1:900])
@@ -157,7 +158,8 @@ new p-value distribution for the q-value (Storey & Tibshirani, PNAS, 2003)
 set.seed(100)
 x = c(rnorm(9000), rnorm(1000, mean = 1)) 
 pvalues= pnorm(x, lower.tail = F)
-p_tibble=tibble(pvalue=pvalues,outcome=c(rep("null",9000),rep("alternative",1000)))
+p_tibble=tibble(pvalue=pvalues,
+                outcome=c(rep("null",9000),rep("alternative",1000)))
 
 ```
 
@@ -166,7 +168,7 @@ under the null, p-value distribution is uniform
 hist(pvalues[1:9000],50)
 ```
 
-under the null, p-value distribution is uniform 
+under the alternative, p-value distribution is skewedm 
 ```{r}
 hist(pvalues[9001:10000],50)
 ```
@@ -176,7 +178,9 @@ Combined, the distribution is a mixture of p-values from the null and alternativ
 hist(pvalues,50)
 ```
 
-q-value can be calculated using the `qvalue` package from Bioconductor
+mixutre of two distributions
 ```{r}
-
+p_tibble %>%
+ggplot(aes(x=pvalue,fill=outcome))+
+geom_histogram(bins=25)
 ```
