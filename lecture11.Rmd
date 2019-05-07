@@ -68,7 +68,115 @@ tibble(x2_given_x1,y_given_x1) %>%
 ```
 
 
-Multiple hypothesis testing
+#Multiple hypothesis testing
+## Why it is important
+```{r}
+m=seq(1:100)
+one_error=1 - (1 - 0.05)^seq(1,100)
+qplot(m,one_error,xlab="m",ylab="P(at least 1 false positive")
+```
+
+simulation with correlation of random variables
+```{r}
+set.seed(10)
+x=rnorm(100)
+y=rnorm(100)
+cor.test(x,y)
+cor.test(x,y)$p.val
+```
+
+simulation with correlation of random variables
+```{r}
+set.seed(10)
+random_cors=Reduce(c,lapply(1:10000,function(iter){
+  x=rnorm(100)
+  y=rnorm(100)
+  correlation=cor.test(x,y)$p.val
+  return(correlation)
+}))
+
+hist(random_cors,100)
+
+##what proportion have p<0.05?
+sum(random_cors<0.05)/10000
+```
+
+
+##p-value corrections
+make a vector, x, of length 1000. The first 900 entries are random numbers with a standard normal distribution. The last 100 are random numbers from a normal distribution with mean 3 and
+sd 1.
+```{r}
+set.seed(10)
+x <- c(rnorm(900), rnorm(100, mean = 3)) 
+```
+
+Hypothesis test that the value of x is not different from 0, given the entries are drawn from a standard normal distribution. The alternate is a one-sided test, claiming that the value is larger than 0.
+```{r}
+p <- pnorm(x, lower.tail = F)
+
+test = p > 0.05
+summary(test[1:900])
+summary(test[901:1000])
+```
+
+What is the Type I error rate?
+What is the Type II error rate?
+
+
+###Bonferroni
+```{r}
+bonftest = p > 0.00005
+summary(bonftest[1:900])
+summary(bonftest[901:1000])
+```
+
+Now what are the Type I and Type II error rates?
+
+###Benjamini-Hochberg FDR
+```{r}
+prank <- rank(p) ##rank p-values
+bh_fdr=p*length(prank)/prank
+
+bhtest= bh_fdr > 0.05
+summary(bhtest[1:900])
+summary(bhtest[901:1000])
+
+## can get this from the p.adjust function as well
+bh_fdr[990:1000]
+p.adjust(p,method="BH")[990:1000]
+
+plot(bh_fdr[990:1000],p.adjust(p,method="BH")[990:1000],xlab="BH by hand",ylab="BH by p.adjust")
+abline(0,1)
+```
+
+Now what are the Type I and Type II error rates?
+
+
+new p-value distribution for the q-value (Storey & Tibshirani, PNAS, 2003)
+```{r}
+set.seed(100)
+x = c(rnorm(9000), rnorm(1000, mean = 1)) 
+pvalues= pnorm(x, lower.tail = F)
+p_tibble=tibble(pvalue=pvalues,outcome=c(rep("null",9000),rep("alternative",1000)))
+
+```
+
+under the null, p-value distribution is uniform 
+```{r}
+hist(pvalues[1:9000],50)
+```
+
+under the null, p-value distribution is uniform 
+```{r}
+hist(pvalues[9001:10000],50)
+```
+
+Combined, the distribution is a mixture of p-values from the null and alternative hypotheses
+```{r}
+hist(pvalues,50)
+```
+
+q-value can be calculated using the `qvalue` package from Bioconductor
 ```{r}
 
 ```
