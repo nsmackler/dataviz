@@ -1,0 +1,78 @@
+```{r}
+library(tidyverse)
+theme_set(theme_classic(base_size = 20)) 
+```
+
+#PCA
+
+install the FactoMineR package, and then load the 'wine' data, and take a subsample (so we don't have too many points)
+```{r}
+library(FactoMineR)
+
+wine=read_csv("wine/wine_data.csv")
+
+set.seed(10)
+wine_sample=wine[sample(1:nrow(wine),500),]
+
+```
+
+This dataset contains 12 colummns of data describing features about wine. Can we describe the  properties of these wines in a smaller number of dimensions?
+
+First limit the data to columns 1-12 and store it as a new object (ignore the wine color for now). We are only working with the numeric columns
+```{r}
+
+
+```
+
+Run a parallel analysis (using fa.parallel() from the psych package) on the remaining wine variables.  How many components would be reasonable to extract?
+```{r}
+
+```
+
+
+Perform a principle components analysis using `prcomp` on these variables and save the results in a new object.  Set the arguments center and scale to be T when running the PCA.
+```{r}
+
+```
+
+Print a summary of the object you saved the pca in.  Look at the variance explained by each component.
+```{r}
+
+```
+
+Do this in a different (read: easier) way
+load in `factoextra` and plot a screeplot of your PCA using `fviz_eig()`
+```{r}
+library(factoextra)
+
+```
+
+Look at the variable loadings on the first two PCs (the loadings are stored in $rotation).  Look for the highest and lowest loadings and think about what this component might reflect about a wine.  
+```{r}
+
+```
+
+look at the variable loadings using the `fviz_pca_var()` function
+```{r}
+
+```
+
+
+Variables loading together on a compoment covary together. To look at this, identify a few variables with the strongest positive loadings on PC1 and look at their correlation with one another.  
+```{r}
+
+```
+
+Now look at the correlation (in the raw data) between the variables with the strongest positive loading and the strongest negative loading on PC1
+```{r}
+
+```
+
+
+Plot the scores stored in `.$x` and color the points by the wine color 
+```{r}
+Can you p
+
+```
+If you've made it this far, now try and do the PCA, but without scaling your variables (`scale=F`)
+What things are different? What are similar? 
