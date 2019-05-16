@@ -1,0 +1,557 @@
+---
+title: "Spatial data in R"
+author: "Kenny Chiou"
+date: "May 16, 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# To start
+
+Install required libraries
+```{r, message=FALSE, warning=FALSE}
+# Packages that are needed for this lecture
+required.packages = c(
+    'tidyverse','broom','maps','mapproj','rgdal',
+    'raster','scales','ggrepel','devtools'
+)
+
+# Packages that are not installed
+missing.packages = setdiff(required.packages,installed.packages()[,'Package'])
+
+# If there are any missing packages, install them
+if (length(missing.packages)) 
+    install.packages(missing.packages,repos='https://ftp.osuosl.org/pub/cran')
+
+# We'll specifically use the development version of ggmap, so be sure to install the latest:
+if (!'ggmap' %in% installed.packages()[,'Package'])
+    devtools::install_github('dkahle/ggmap')
+```
+
+
+Download the following external files, unzip the archives, and add the files to your working directory.
+
+* [Population density, Zambia](http://biogeo.ucdavis.edu/data/diva/msk_pop/ZMB_msk_pop.zip)
+* [Country outlines, Zambia](http://biogeo.ucdavis.edu/data/diva/adm/ZMB_adm.zip)
+* [Major roads, Zambia](http://biogeo.ucdavis.edu/data/diva/rds/ZMB_rds.zip)
+* [Water sources, Zambia](http://biogeo.ucdavis.edu/data/diva/wat/ZMB_wat.zip)
+* [Soho cholera data](http://rtwilson.com/downloads/SnowGIS_SHP.zip)
+
+## Hello world
+
+Load required libraries for this section
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(maps)
+library(mapproj)
+```
+
+Mapmaking is super easy! Just to demonstrate how rapidly and quickly we can make beautiful maps in R, let's generate a quick map. We'll go over the components later, so no need to understand it fully just yet.
+
+```{r, message=FALSE, warning=FALSE}
+map_data('state') %>% ggplot(aes(long,lat,group=group)) +
+    geom_polygon(fill='lightgray',color='white',size=0.5) +
+    coord_map() + theme_void()
+```
+
+## Understanding the base map
+
+Now let's go over the basic components to putting together the map above. First we'll need to load the map data. Here, we'll use the `state` dataset from the `maps` package, which includes the 48 states in the contiguous continental USA.
+
+```{r, message=FALSE, warning=FALSE}
+usa.states = map_data('state') %>% as_tibble()
+```
+
+If we preview the resulting object (e.g., `head usa.states`), we see a data frame containing coordinates (`long`, `lat`) as well as a `group` attribute. Let's try plotting this by passing the latitude and longitude to ggplot:
+
+```{r, message=FALSE, warning=FALSE}
+usa.states %>% ggplot(aes(lat, long)) +
+    geom_point()
+```
+
+Hm... This is perhaps not quite what we wanted, but we can clearly see an outline of the continental USA, so we're close! There are a few immediately obvious problems we can fix pretty easily. First, the map is clearly rotated 90°C. This is because the common "latitude, longitude" convention for providing coordinates actually runs opposite to the conventional "x, y" convention of plotting data. We will therefore train ourselves to provide coordinates in the order "longitude, latitude". Let's fix this first:
+
+```{r, message=FALSE, warning=FALSE}
+usa.states %>% ggplot(aes(long, lat)) +
+    geom_point()
+```
+
+Next, instead of showing outlines as plotted points, we instead want to see standard line borders. We can fix this by using `geom_polygon`.
+
+```{r, message=FALSE, warning=FALSE}
+usa.states %>% ggplot(aes(long, lat)) +
+    geom_polygon()
+```
+
+Ok, we can see the points are replaced by outlines, but there is clearly some funkiness going on. This is because the `usa.states` data frame consists of points from multiple polygons, but we have not provided instructions on which polygons are separate, and so certain adjacent points from different polygons are incorrectly being joined together. We can fix this by using the `group` attribute in the data frame and adding it as an additional aesthetic:
+
+```{r, message=FALSE, warning=FALSE}
+usa.states %>% ggplot(aes(long, lat, group=group)) +
+    geom_polygon()
+```
+
+The last obvious issue is with the weird scaling. We like to view maps in which longitude and latitude are on the same scale, and so R's default behavior in which the x and y axes are scaled according to the range of the data does not quite work. We can fix this by scaling to a **map projection** using `coord_map()`.
+
+```{r, message=FALSE, warning=FALSE}
+usa.states %>% ggplot(aes(long, lat, group=group)) +
+    geom_polygon() + coord_map()
+```
+
+Because this follows normal `ggplot2` rules, we can prettify the map by altering aesthetics and the theme. We can remove the axes with `theme_void()` and set the fill color (`fill`), line color (`color`), and line weight (`size`) to recreate the plot we made earlier:
+
+```{r, message=FALSE, warning=FALSE}
+usa.states %>% ggplot(aes(long, lat, group=group)) +
+    geom_polygon(fill='lightgray',color='white',size=0.5) +
+    coord_map() + theme_void()
+```
+
+Also because `usa.states` is a data frame, it is pretty trivial to modify this map to show particular states. Let's modify this map to plot just the Pacific Northwest using `filter()`.
+
+```{r, message=FALSE, warning=FALSE}
+usa.states %>% filter(region %in% c('oregon','washington','idaho')) %>%
+	  ggplot(aes(long, lat, group=group)) +
+	  geom_polygon(fill='lightgray',color='white',size=0.5) +
+	  coord_map() + theme_void()
+```
+
+## Working with online map tiles
+
+Load required libraries
+```{r, message=FALSE, warning=FALSE}
+library(ggmap)
+```
+
+Next, you'll need to set a window representing your study extent (the geographical limits of your analysis). You can do this by visiting [OpenStreetMap](https://www.openstreetmap.org), centering and adjusting the zoom on your study area, and clicking *Export*. Then use the information to set your window like this example:
+
+```{r, message=FALSE, warning=FALSE}
+uw.window = c(
+    left=-122.3146,
+    bottom=47.6495,
+    right=-122.2912,
+    top=47.6595
+)
+```
+
+The next step is to download maps. R will first have to actually download map tiles, and of course we'll only want to download the tiles we're actually using (i.e., the ones that are at least partly within the window set above. We'll get our maps from the [Stamen Project](http://maps.stamen.com/), which provides a few useful map styles derived from [OpenStreetMap](https://www.openstreetmap.org) data. We'll start with a farily minimalist style: `toner-lite`
+
+```{r, message=FALSE, warning=FALSE}
+uw.map.lite = get_map(location=uw.window,source='stamen',maptype='toner-lite')
+```
+
+Now we can pass this to `ggmap()` to make the map.
+
+```{r, message=FALSE, warning=FALSE}
+uw.map.lite %>% ggmap() + theme_void()
+```
+
+Here's an example with a different map style: `terrain`
+
+```{r, message=FALSE, warning=FALSE}
+uw.map.terrain = get_map(location=uw.window,source='stamen',maptype='terrain')
+
+uw.map.terrain %>% ggmap() + theme_void()
+```
+
+For a full list of supported map types, run `help(get_stamenmap)`. `ggmap()` can also work with [Google Map](https://maps.google.com) imagery, but this currently requires a developer account and stored credit card information.
+
+## Working with point data
+
+```{r, message=FALSE, warning=FALSE}
+library(ggrepel)
+```
+
+Thus far, we have mainly been working with data from R packages or online maps to create **base maps**, or the background image on which we'd like to plot our spatial data. Here, we'll start plotting real data, starting with points. Let's start with a dataset of various buildings around UW.
+
+```{r, message=FALSE, warning=FALSE}
+uw.poi = data.frame(
+    poi=c('Denny Hall','Guthrie Hall','Raitt Hall',
+        'Health Sciences Building','Foege Hall','Suzzallo Library',
+        'Husky Union Building','Life Sciences Building'),
+    long = c(-122.3086,-122.3109,-122.3073,-122.3091,
+        -122.3131,-122.3081,-122.3051,-122.3101),
+    lat = c(47.6585,47.6540,47.6579,47.6507,
+        47.6519,47.6558,47.6555,47.6523)
+)
+
+uw.map.terrain %>% ggmap() +
+    geom_point(aes(long,lat),data=uw.poi,
+        color='red') + 
+    theme_void()
+```
+
+It worked! But it's difficult to tell which building is which. Let's fix this by adding labels using `geom_text()`.
+ 
+```{r, message=FALSE, warning=FALSE}
+uw.map.terrain %>% ggmap() +
+    geom_point(aes(long,lat),data=uw.poi,
+        color='red') + 
+    geom_text(aes(long,lat,label=poi),data=uw.poi) +
+    theme_void()
+```
+
+Because the labels have the same coordinates, they are covering up our points! To fix this, we'll use `geom_text_repel()` from the `ggrepel` package instead, which adds labels in a way such that they do not overlap with other data or labels.
+
+```{r, message=FALSE, warning=FALSE}
+uw.map.terrain %>% ggmap() +
+    geom_point(aes(long,lat),data=uw.poi,
+        color='red') + 
+    geom_text_repel(aes(long,lat,label=poi),data=uw.poi) +
+    theme_void()
+```
+
+## Working with polylines and polygons
+
+Load required libraries
+```{r, message=FALSE, warning=FALSE}
+library(rgdal)
+library(broom)
+```
+
+Download and unzip these file archives: [ZMB_adm.zip](http://biogeo.ucdavis.edu/data/diva/adm/ZMB_adm.zip) and [ZMB_rds.zip](http://biogeo.ucdavis.edu/data/diva/rds/ZMB_rds.zip). These archives contain administrative boundaries (polygons) and major roads (polylines) for Zambia. Once unzipped, move all of the files into the working directory on your computer. Run `getwd()` if you're not sure where that is.
+
+These files are provided as **shapefiles**, which are a popular GIS format consisting of a set of files sharing the same name with different extensions (e.g.., `*.shp`, `*.shx`, `*.dbf`). We can read these data using the `readOGR()` function from the `rgdal` package.
+
+```{r, message=FALSE, warning=FALSE}
+zmb.borders = readOGR('ZMB_adm0.shp',verbose=FALSE)
+zmb.roads = readOGR('ZMB_roads.shp',verbose=FALSE)
+```
+
+`readOGR()` imports the shapefiles and automatically detects what kind of spatial data they represent. These files were imported as a **SpatialPolygonsDataFrame** and **SpatialLinesDataFrame**, respectively. In order to plot these with `ggplot()`, we'll need to convert these into a data frame as follows.
+
+```{r, message=FALSE, warning=FALSE}
+zmb.borders.df = zmb.borders %>% tidy()
+zmb.roads.df = zmb.roads %>% tidy()
+```
+
+Now that we have the shapefiles formatted correctly for `ggplot()`, mapping them is a breeze!
+
+```{r, message=FALSE, warning=FALSE}
+ggplot() +
+    geom_polygon(aes(long,lat,group=group),data=zmb.borders.df) +
+    geom_path(aes(long,lat,group=group),data=zmb.roads.df)
+```
+
+Here is a revised plot, fixing some issues with aesthetics and scaling.
+
+```{r, message=FALSE, warning=FALSE}
+ggplot() +
+    geom_polygon(aes(long,lat,group=group),data=zmb.borders.df,
+        fill=NA,color='black',size=1) +
+    geom_path(aes(long,lat,group=group),data=zmb.roads.df,
+        size=0.1) +
+    theme_void() + coord_map()
+```
+
+## Working with raster data
+
+Load required libraries
+```{r, message=FALSE, warning=FALSE}
+library(raster)
+library(scales)
+```
+
+Download and unzip these file archives: [ZMB_msk_pop.zip](http://biogeo.ucdavis.edu/data/diva/msk_pop/ZMB_msk_pop.zip) and [ZMB_wat.zip](http://biogeo.ucdavis.edu/data/diva/wat/ZMB_wat.zip). These archives contain population density data (calculated into 30 arc-second grids) and major water sources (rivers/lakes) for Zambia. Once unzipped, move all of the files into the working directory on your computer. Run `getwd()` if you're not sure where that is.
+
+We'll work with the `zmb_msk_pop.grd` file. Importing the data with `raster()` is trivial (see [this list](https://www.gdal.org/formats_list.html) for a list of supported formats)!
+
+```{r, message=FALSE, warning=FALSE}
+zmb.pop = raster('zmb_msk_pop.grd')
+```
+
+In order to use this with `ggplot()`, which requires data frames, we will convert the raster using `rasterToPoints()`. This gives 3 columns `x` and `y` (which will always be the case for data returned by `raster()`) and a third column containing the value of each grid cell. In this case, it is called `zmb_msk_pop`, which we can confirm using `names(zmb.pop)`. While not strictly necessary, we'll use `mutate()` to coerce these names into something a bit more readable and familiar.
+
+```{r, message=FALSE, warning=FALSE}
+zmb.pop.df = zmb.pop %>% rasterToPoints() %>%
+    as_tibble() %>% mutate(long=x,lat=y,value=zmb_msk_pop)
+```
+
+Now these data are ready to be plotted with `ggplot()`! We'll use a new geom designed for raster data called `geom_raster()`.
+
+```{r, message=FALSE, warning=FALSE}
+zmb.pop.df %>% ggplot() +
+    geom_raster(aes(long,lat,fill=value)) +
+    scale_fill_gradientn(colors=c('#f7f7f7','#40004b'),name='Population') +
+    theme_void() + coord_equal()
+```
+
+This is not too bad, but what's immediately clear is that the population is super-concentrated into a few areas, while the majority of land is sparsely occupied. Because we're using a light-dark color scale, the outline of the country is hard to distinguish from the background.
+
+Let's fix this first by adding in the country borders we made earlier.
+
+```{r, message=FALSE, warning=FALSE}
+ggplot() +
+    geom_raster(aes(long,lat,fill=value),data=zmb.pop.df) +
+    geom_polygon(aes(long,lat,group=group),data=zmb.borders.df,
+        fill=NA,color='black',size=0.5) +
+    scale_fill_gradientn(colors=c('#f7f7f7','#40004b'),name='Population') +
+    theme_void() + coord_equal()
+```
+
+Now the outline is a lot clearer, but it still needs some contrast to help us better understand population differences. One helpful change could be to set a population threshold above which cells would be assigned the same color. This allows the full range of the color scale to be "stretched" to encompass the typical part of the distribution. We'll set the threshold to `mean(value) + 2 * sd(value)` and use the `squish()` function from the `scales` package to ensure that outliers are given the most extreme colors.
+
+```{r, message=FALSE, warning=FALSE}
+ggplot() +
+    geom_raster(aes(long,lat,fill=value),data=zmb.pop.df) +
+    geom_polygon(aes(long,lat,group=group),data=zmb.borders.df,
+        fill=NA,color='black',size=0.5) +
+    scale_fill_gradientn(
+        colors=c('#f7f7f7','#40004b'),
+        name='Population',
+        limits=c(0,with(zmb.pop.df,mean(value) + 2 * sd(value))),
+        oob=squish) +
+    theme_void() + coord_equal()
+```
+
+Another solution is apply a log-transform to the color scale. In this case, we’ll use the `log1p()` function, which calculates `log(x + 1)` to ensure that zero values are transformed into finite values (`log(0)` is undefined).
+
+```{r, message=FALSE, warning=FALSE}
+ggplot() +
+    geom_raster(aes(long,lat,fill=value),data=zmb.pop.df) +
+    geom_polygon(aes(long,lat,group=group),data=zmb.borders.df,
+        fill=NA,color='black',size=0.5) +
+    scale_fill_gradientn(
+        colors=c('#f7f7f7','#40004b'),
+        name='Population',
+        trans='log1p') +
+    theme_void() + coord_equal()
+```
+
+Now let's add the road data we imported earlier to see how infrastructure might correspond to population hotspots. While we're at it, let's also add in natural bodies of water, such as rivers (`ZMB_water_lines_dcw.shp`) and lakes (`ZMB_water_areas_dcw.shp`). We can load the water datasets like this:
+
+```{r, message=FALSE, warning=FALSE}
+zmb.water.lines.df = readOGR('ZMB_water_lines_dcw.shp',verbose=FALSE) %>% tidy()
+zmb.water.areas.df = readOGR('ZMB_water_areas_dcw.shp',verbose=FALSE) %>% tidy()
+```
+
+We're ready to make our combined plot! To make sure the water does not obscure the population data, I set `alpha=0.5` (medium opaqueness) for the water datasets.
+
+```{r, message=FALSE, warning=FALSE}
+ggplot() +
+    geom_raster(aes(long,lat,fill=value),data=zmb.pop.df) +
+    geom_polygon(aes(long,lat,group=group),data=zmb.borders.df,
+        fill=NA,color='black',size=0.5) +
+    scale_fill_gradientn(
+        colors=c('#f7f7f7','#40004b'),
+        name='Population',
+        trans='log1p') +
+    geom_path(aes(long,lat,group=group),data=zmb.roads.df,
+        color='black',size=0.1) +
+    geom_polygon(aes(long,lat,group=group),data=zmb.water.areas.df,
+        fill='blue',alpha=0.5,color=NA) +
+    geom_path(aes(long,lat,group=group),data=zmb.water.lines.df,
+       color='blue',alpha=0.5,size=0.05) +
+    theme_void() + coord_equal()
+```
+
+This is a pretty good effort, but one remaining issue is the uniform appearance of the "water lines" (rivers). In reality, some rivers are wider and/or carry more volume than others, and we might want to emphasize those. A limitation of the `tidy()` method for spatial data frames is that it loses some of the metadata that could be useful for distinguishing between river types. To fix this, we'll need to do some minor data wrangling. This [link](https://github.com/tidyverse/ggplot2/wiki/plotting-polygon-shapefiles) provides a good guide. I wrote the following function to implement those changes:
+
+```{r, message=FALSE, warning=FALSE}
+polyToPoints = function(x) {
+	  x@data$id = rownames(x@data)
+	  return(dplyr::full_join(broom::tidy(x),x@data,by='id'))
+}
+```
+
+We can now run this function in place of `tidy()` to update our `zmb.water.lines.df` data frame from earlier.
+
+```{r, message=FALSE, warning=FALSE}
+zmb.water.lines.df = readOGR('ZMB_water_lines_dcw.shp',verbose=FALSE) %>% polyToPoints()
+```
+
+If we take a look at the data frame (`View(zmb.water.lines.df)`), we can see that it contains a few new columns, including `F_CODE_DES` (type of feature; in this case always `"River/Stream"`), `HYC_DESCRI` (type of river/stream, in this case either `"Perennial/Permanent "` or `"Non-Perennial/Intermittent/Fluctuating"`), and `NAM` (name of river). We now have some information for classifying rivers. Let's assume that if a river is mentioned in the [Zambia Wikipedia page](https://en.wikipedia.org/wiki/Zambia#Geography_and_Geology), it is important enough to display more prominently. We can now recode the data like so.
+
+```{r, message=FALSE, warning=FALSE}
+wiki.rivers = c('Kabompo','Lungue-Bungo','Kafue','Luangwa','Zambezi') %>% toupper()
+zmb.water.lines.df = zmb.water.lines.df %>%
+    mutate(rivertype=factor(as.integer(NAM %in% wiki.rivers)))
+```
+
+We can now redo the latest map and this type scale the thickness (`size`) of rivers to the variable (`rivertype`) we just calculated.
+
+```{r, message=FALSE, warning=FALSE}
+ggplot() +
+    geom_raster(aes(long,lat,fill=value),data=zmb.pop.df) +
+    geom_polygon(aes(long,lat,group=group),data=zmb.borders.df,
+        fill=NA,color='black',size=0.5) +
+    scale_fill_gradientn(
+        colors=c('#f7f7f7','#40004b'),
+        name='Population',
+        trans='log1p') +
+    geom_path(aes(long,lat,group=group),data=zmb.roads.df,
+        color='black',size=0.1) +
+    geom_polygon(aes(long,lat,group=group),data=zmb.water.areas.df,
+        fill='blue',alpha=0.5,color=NA) +
+    geom_path(aes(long,lat,group=group,size=rivertype),data=zmb.water.lines.df,
+       color='blue',alpha=0.5) +
+    scale_size_discrete(range=c(0.05,0.5),guide=FALSE) +
+    theme_void() + coord_equal()
+```
+
+## Spatial analysis
+
+In this section, we'll recreate a pioneering example of spatial analysis: John Snow's analysis of the 1854 cholera outbreak in London.
+
+Download and unzip this file archive: [SnowGIS_SHP.zip](http://rtwilson.com/downloads/SnowGIS_SHP.zip). This archive contains data from John Snow's original analysis of the Broad Street cholera epidemic (georeferenced and provided by [Robin Wilson](http://blog.rtwilson.com/john-snows-cholera-data-in-more-formats/)). After unzipping, move all of the files into the working directory on your computer. Run `getwd()` if you're not sure where that is.
+
+The data archive contains several datasets, including some [OpenStreetMap](https://openstreetmap.org) tiles, locations of cholera deaths, locations of water pumps, and a georeferenced version of Snow's hand-drawn map. We'll work primarily with the cholera deaths (`Cholera_Deaths.shp`), pumps (`Pumps.shp`), and Snow's original base map (`SnowMap.tif`).
+
+Before we start working with Snow's original map (which takes some time to plot), let's first use a quick online map. Once again, visit [OpenStreetMap](https://www.openstreetmap.org) to set the extent of your window. This [link](https://www.openstreetmap.org/export#map=17/51.51253/-0.13308) is centered on the Broad Street location.
+
+```{r, message=FALSE, warning=FALSE}
+snow.window = c(
+    left=-0.1388,
+    bottom=51.5108,
+    right=-0.1296,
+    top=51.5148
+)
+```
+
+Now we can plot the study area.
+
+```{r, message=FALSE, warning=FALSE}
+snow.osm.map = get_map(location=snow.window,source='stamen',maptype='toner-lite')
+
+snow.osm.map %>% ggmap() + theme_void()
+```
+
+Next, we'll read in the point data representing cholera deaths.
+
+```{r, message=FALSE, warning=FALSE}
+deaths = readOGR('Cholera_Deaths.shp',verbose=FALSE)
+```
+
+`readOGR()` imports these point data as a **SpatialPointsDataFrame**. We can finesse the data into a data frame as follows. By default, the data frame contains the columns `coords.x1`, which represents longitude, and `coords.x2`, which represents latitude. It also contains the column `Count`, which represents the number of deaths at a particular location. To make interpreting code easier later on, I'll use `mutate()` here to rename columns. I'll also create a new column `datatype` that classifies these points as "deaths".
+
+```{r, message=FALSE, warning=FALSE}
+deaths.df = deaths %>% as_tibble() %>%
+    mutate(long=coords.x1,lat=coords.x2,datatype='deaths')
+```
+
+We'll now attempt to add the cholera deaths to our earlier map.
+
+```{r, message=FALSE, warning=FALSE}
+snow.osm.map %>% ggmap() + theme_void() +
+    geom_point(aes(long,lat),data=deaths.df)
+```
+
+The base map is certainly showing, but where are the points? If we take a quick look at our earlier `deaths` object imported using `readOGR()` (`print(deaths)`), the coordinates and the coordinate reference system look a bit odd. This is because the **projections** differ between our base map (WGS 84) and the imported points (we got lucky earlier with the Zambia data from [DIVA-GIS](http://diva-gis.org) because they were already in WGS 84). We can fix this by converting the points to a new projection using `spTransform()`.
+
+**Note**: There are a multitude of different possible *geodedic* codes that are available for use here. To see the full list of supported codes, run `View(rgdal::make_EPSG())`
+
+```{r, message=FALSE, warning=FALSE}
+deaths.df = deaths %>% spTransform(CRS('+proj=longlat +datum=WGS84')) %>%
+    as_tibble() %>% mutate(long=coords.x1,lat=coords.x2,datatype='deaths')
+```
+
+Now that we've fixed the points data frame, let's rerun the plot from earlier.
+
+```{r, message=FALSE, warning=FALSE}
+snow.osm.map %>% ggmap() + theme_void() +
+    geom_point(aes(long,lat),data=deaths.df)
+```
+
+Perfect! Now we can add the pumps as well. Note that I updated the data type (`datatype`) to distinguish deaths data from pumps data.
+
+```{r, message=FALSE, warning=FALSE}
+pumps.df = readOGR('Pumps.shp',verbose=FALSE) %>%
+    spTransform(CRS('+proj=longlat +datum=WGS84')) %>%
+    as_tibble() %>% mutate(long=coords.x1,lat=coords.x2,datatype='pumps')
+```
+
+Because we created a new column `datatype` and assigned each point set a different value, we can combine the two datasets into one and differentiate them by both color and size
+
+```{r, message=FALSE, warning=FALSE}
+snow.points = bind_rows(deaths.df,pumps.df)
+
+snow.osm.map %>% ggmap() + theme_void() +
+    geom_point(aes(long,lat,color=datatype,size=datatype),data=snow.points) +
+    scale_color_manual(values=c('blue','orange')) +
+    scale_size_manual(values=c(1,5)) +
+    theme(legend.position='none')
+```
+
+Suppose we wanted to map point sizes to the number of deaths at each location. Using the combined points dataset will be problematic because the `Count` column only applies to the deaths dataset (the value will be `NA` for all pumps). The pumps will therefore not show up! One workaround is to add the points separately like so.
+
+```{r, message=FALSE, warning=FALSE}
+snow.osm.map %>% ggmap() + theme_void() +
+    geom_point(aes(long,lat,size=Count),data=deaths.df,
+        color='blue') +
+    geom_point(aes(long,lat),data=pumps.df,
+        color='orange',size=5) +
+    scale_size_continuous(range=c(1,4)) +
+    theme(legend.position='none')
+```
+
+While the point data are separate, we can pretty easily modify the above so that the death data are shown as 2-dimensional density plots rather than points. We'll do this using `stat_density2d()`. The function calculates the polygons ad hoc and creates a new column that we can access as `..level..`. By scaling the fill colors and transparency, we can highlight the areas with the highest density of cholera deaths with darker or more opaque colors.
+
+```{r, message=FALSE, warning=FALSE}
+snow.osm.map %>% ggmap() + theme_void() +
+    stat_density2d(aes(long,lat,alpha=..level..),data=deaths.df,
+        fill='blue',bins=16,geom='polygon') +
+    geom_point(aes(long,lat),data=pumps.df,
+        color='orange',size=5) +
+    scale_alpha_continuous(range = c(0, 0.3)) +
+    theme(legend.position='none')
+```
+
+Hopefully it's now abundantly clear which pump was most likely responsible for the cholera outbreak! As a final exercise, instead of plotting the data onto a modern street map of London, let's visualize the data as Snow might have by plotting the data directly onto his map. We'll start by importing the `SnowMap.tif` file using `raster()`. Because we *always learn from past mistakes*, we'll also immediately convert the projection of this map. For rasters, we do this using `projectRaster()`.
+
+```{r, message=FALSE, warning=FALSE}
+snow.orig.map = raster('SnowMap.tif') %>%
+    projectRaster(crs=CRS('+proj=longlat +datum=WGS84 +ellps=WGS84'))
+```
+
+Next, we'll prepare this raster for `ggplot()`. In this case, the cell values come from the column `SnowMap`, which we know by running `names(snow.orig.map)`. Otherwise, we've seen all this before in the Zambia population example!
+
+```{r, message=FALSE, warning=FALSE}
+snow.orig.map.df = snow.orig.map %>% rasterToPoints() %>%
+    as_tibble() %>% mutate(long=x,lat=y,value=SnowMap)
+```
+
+Finally, let's take the last plot we generated and swap in Snow's original map. The image is fairly high-resolution, so this may take a couple minutes.
+
+```{r, message=FALSE, warning=FALSE}
+snow.orig.map.df %>% ggplot() +
+    geom_raster(aes(long,lat,fill=value)) + 
+    scale_fill_gradientn(colors=c('#000000','#ffffff')) + 
+    stat_density2d(aes(long,lat,alpha=..level..),data=deaths.df,
+        fill='blue',bins=16,geom='polygon') +
+    geom_point(aes(long,lat),data=pumps.df,
+        color='orange',size=5) +
+    scale_alpha_continuous(range = c(0, 0.3)) +
+    theme_void() + theme(legend.position='none') + coord_equal()
+```
+
+## Notes
+
+There are some great resources out there for free spatial data. Here's a short, by no means comprehensive, list of data sources you might find useful.
+
+ * [DIVA-GIS](http://diva-gis.org)
+ 
+    Country-by-country vector and raster data
+
+ * [Natural Earth](http://www.naturalearthdata.com/)
+
+    Global vector and raster data
+ 
+ * [Socioeconomic Data and Applications Center](https://sedac.ciesin.columbia.edu/)
+ 
+    A variety of socieconomic raster datasets
+ 
+ * [Protected Planet](https://protectedplanet.net/)
+ 
+    Data from protected areas around the Earth
+ 
+ * [WorldClim](https://www.worldclim.org/)
+ 
+    Global climate raster data (including past and future conditions)
+ 
+ * [SRTM - Consortium for Spatial Information ](http://srtm.csi.cgiar.org/)
+ 
+    Digital elevation model (DEM) raster data
+ 
+ * [USGS Earth Explorer](https://earthexplorer.usgs.gov/)
+ 
+    Data portal to high-quality satellite data
+
