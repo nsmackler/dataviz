@@ -1,0 +1,58 @@
+Read in the data
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+What is the date range of this season?
+
+Calculate the regular season (`seasTyp`) record (win/loss) for each team (hint: use `group_by()` and `summarize()` or `count()`)
+```{r}
+
+```
+
+Which team had the best record? Which had the worst record? 
+
+If that was too easy, then calculate the record per month. Which team had the best month?
+
+Calculate a new variable, which is win% for each team. Then plot win % vs. average points per game (`teamPTS`)
+```{r}
+
+```
+
+
+If that's too easy, then plot win % vs. average point differential (`teamPTS - opptPTS`)
+```{r}
+
+```
+
+Now calculate wins/losses each for home and away games (`teamLoc`). Who had the best home record? Who had the best away record? Can you plot Home vs. Away win % (or number of wins)? 
+```{}
+
+```
+
+Make that an interactive plotly plot. Try editing the `tooltip` text to show you the team for each data point.
+```{r}
+```
+
+Hard challenge: use plotly or gganimate to show how the home and away win percentages changed from month to month.
+```{r}
+```
+
+Can you run a PCA on the mean average win/loss data? Hint: to start you can use `summarize all` and `select_if`
+
+Plot the first two PCs and see if you can color it by win/loss. What are the variables that load strongly onto PC1 and PC2?
+```{r}
+nba_mean=nba %>% filter(seasTyp=="Regular") %>% group_by(teamAbbr,teamRslt) %>% summarize_all(mean,na.rm=T) %>% select_if(~sum(is.na(.)) == 0)
+
+fa.parallel(nba_mean[,4:85])
+```
+
+more challenges: What about doing this on a game-by-game basis? What variables load strongly onto PC1 and PC2? Does it predict a win/loss for the focal team?
+
+super hard challenge: Plot win percentages on a north american map using the team city as the location.
+```{r}
+```
+
+only slightly super harder challenge: make your map interactive
+```{r}
+```
