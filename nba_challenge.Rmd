@@ -5,6 +5,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 What is the date range of this season?
 
+What is the range of points scored in a game by one team? Which team scored the most points in a game? Which team scored the fewest? 
+
 Calculate the regular season (`seasTyp`) record (win/loss) for each team (hint: use `group_by()` and `summarize()` or `count()`)
 ```{r}
 
@@ -54,4 +56,5 @@ super hard challenge: Plot win percentages on a north american map using the tea
 
 only slightly super harder challenge: make your map interactive
 ```{r}
+
 ```
