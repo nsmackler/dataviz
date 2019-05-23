@@ -44,7 +44,6 @@ Plot the first two PCs and see if you can color it by win/loss. What are the var
 ```{r}
 nba_mean=nba %>% filter(seasTyp=="Regular") %>% group_by(teamAbbr,teamRslt) %>% summarize_all(mean,na.rm=T) %>% select_if(~sum(is.na(.)) == 0)
 
-fa.parallel(nba_mean[,4:85])
 ```
 
 more challenges: What about doing this on a game-by-game basis? What variables load strongly onto PC1 and PC2? Does it predict a win/loss for the focal team?
