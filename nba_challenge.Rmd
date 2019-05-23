@@ -36,6 +36,11 @@ Make that an interactive plotly plot. Try editing the `tooltip` text to show you
 ```{r}
 ```
 
+Now make a plot or two in plotly using the `plot_ly()` function. Try both univariate and multivariate plots. For help, see [this cheat sheet](https://images.plot.ly/plotly-documentation/images/r_cheat_sheet.pdf)
+```{}
+
+```
+
 Hard challenge: use plotly or gganimate to show how the home and away win percentages changed from month to month.
 ```{r}
 ```
