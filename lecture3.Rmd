@@ -1,5 +1,5 @@
 ---
-title: "Psych-531"
+title: "Bio-494 Week 1"
 author: "Noah"
 output: html_document
 ---
@@ -16,11 +16,15 @@ this is a list
 * item 2
 * item 3
 
+Any text you write outside of code "chunks" is just text. 
+It is how you annotate the text. 
+
+lines 20-22 are a chunk of R code, bookended by the three back-ticks
 ```{r}
 library(tidyverse)
 ```
 
-this is annotation 
+Here I am reading in a file. 
 ```{r}
 movies_imdb=read_delim("movies/movies_imdb.txt",delim=",")
 movies_rottentom=read_delim("movies/movies_rottentom.txt",delim=",")
