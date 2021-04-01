@@ -102,12 +102,6 @@ ggplot(data=movies_imdb,aes(x=imdb_score))+
   geom_histogram(binwidth = 0.1)
 ```
 
-What about "bin width"?
-```{r}
-ggplot(data=movies_imdb,aes(x=imdb_score))+
-  geom_histogram(binwidth = 0.1)
-```
-
 What about comparing multiple distributions?
 ```{r}
 ggplot(data=movies_imdb,aes(x=imdb_score,fill=color))+
