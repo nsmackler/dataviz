@@ -111,10 +111,10 @@ ggplot(data=movies_imdb,aes(x=imdb_score,fill=color))+
 stacked bar charts are confusing. what else can we do?
 ```{r}
 ggplot(data=movies_imdb,aes(x=imdb_score,fill=color))+
-  geom_histogram(binwidth = 0.1, position = "dodge")+
+  geom_histogram(binwidth = 0.1, position = "identity")+
   scale_fill_brewer(palette = "Set1")
 
-ggplot(data=movies_imdb,aes(x=imdb_score,col=color))+
+ggplot(data=movies_imdb,aes(x=imdb_score,color=color))+
   geom_freqpoly(binwidth = 0.1)+scale_color_brewer(palette = "Set1")
 ```
 
@@ -141,6 +141,85 @@ t.test(color_bw_movies$imdb_score~color_bw_movies$color)
 ## Wilcoxon T-test (also known as a Mann-Whitney, can be paired or not)
 wilcox.test(color_bw_movies$imdb_score~color_bw_movies$color)
 ```
+
+Two variables at a time
+First we'll create a new variable for movies being made before or after 2005 (~ half the dataset)
+```{r}
+movies_imdb %>% filter(!is.na(title_year)) %>% 
+  mutate(post2005=title_year>2005) %>% 
+  ggplot(aes(x=duration, fill=post2005)) + geom_histogram(alpha=0.5)
+movies_imdb %>% filter(!is.na(title_year)) %>%
+  mutate(post2005=title_year>2005) %>% 
+  ggplot(aes(x=duration, fill=post2005)) + geom_histogram(alpha=0.5, position="identity")
+movies_imdb %>% filter(!is.na(title_year)) %>%
+  mutate(post2005=title_year>2005) %>% 
+  ggplot(aes(x=duration, fill=post2005)) + geom_density(alpha=0.5)
+```
+
+What if we have more categories?
+we could do boxplots, violinplots, overlapping density plots
+note that we're creating a new variable (using mutate) where we cut the title_year variable into 10 equal-sized bins, using "cut()"
+```{r}
+movies_imdb %>% filter(!is.na(title_year)) %>% 
+  mutate(year_bin=cut(title_year,breaks = 10)) %>% 
+  ggplot(aes(x=duration, y=year_bin)) + geom_boxplot() +
+  ggtitle("boxplot")
+
+movies_imdb %>% filter(!is.na(title_year)) %>% 
+  mutate(year_bin=cut(title_year,breaks = 10)) %>% 
+  ggplot(aes(x=duration, y=year_bin)) + geom_violin() +
+  ggtitle("violin plot")
+
+movies_imdb %>% filter(!is.na(title_year)) %>% 
+  mutate(year_bin=cut(title_year,breaks = 10)) %>% 
+  ggplot(aes(x=duration, fill=year_bin)) + geom_density(alpha=0.5) +
+  ggtitle("density plot")
+```
+
+That last one is hard to see, let's look again using ggridges
+note that we now have to map the year_bin variable to the y aesthetic, not the fill (you can do both y and fill if you want, but that's redundant)
+```{r}
+library(ggridges)
+movies_imdb %>% filter(!is.na(title_year)) %>% 
+  mutate(year_bin=cut(title_year,breaks = 10)) %>% 
+  ggplot(aes(x=duration, y=year_bin)) + geom_density_ridges(alpha=0.5)
+
+movies_imdb %>% filter(!is.na(title_year)) %>% 
+  mutate(year_bin=cut(title_year,breaks = 10)) %>% 
+  ggplot(aes(x=duration, y=year_bin, fill=year_bin)) + geom_density_ridges(alpha=0.5)
+
+movies_imdb %>% filter(!is.na(title_year)) %>% 
+    mutate(year_bin=cut(title_year,breaks = 10)) %>% 
+    ggplot(aes(x=duration, y=year_bin, fill=year_bin)) +
+    geom_density_ridges(alpha=0.5,stat = "binline", bins = 50)
+
+movies_imdb %>% filter(!is.na(title_year)) %>% 
+  mutate(year_bin=cut(title_year,breaks = 10)) %>% 
+  ggplot(aes(x=duration, y=year_bin, fill=year_bin)) + 
+  geom_density_ridges(alpha=0.5, quantile_lines = TRUE, vline_size = 1)
+
+```
+
+How about two continuous variables? 
+```{r}
+movies_imdb %>% filter(!is.na(title_year)) %>% 
+  ggplot(aes(x=duration, y=title_year)) + geom_point()
+```
+
+How about many continuous variables?
+```{r}
+library(GGally)
+movies_imdb %>% select(title_year,duration,imdb_score,gross) %>% 
+  ggpairs()
+
+movies_imdb %>% select_if(is.numeric) %>% 
+  ggpairs()
+```
+
+
+
+
+
 
 Let's join the movie data and do some more data exploration
 ```{r}
