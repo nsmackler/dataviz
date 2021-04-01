@@ -85,7 +85,7 @@ movies_rottentom$title %in% movies_imdb$movie_title %>% View()
 
 Let's look at some distributions. 
 ```{r}
-movies_imdb=movies[["movies_imdb.txt"]]
+imdb=read_delim("movies/movies_imdb.txt",delim=",")
 ggplot(data=movies_imdb,aes(x=imdb_score))+
   geom_histogram()
 ```
