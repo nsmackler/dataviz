@@ -1,5 +1,6 @@
 ```{r}
 library(tidyverse)
+library(gridExtra)
 theme_set(theme_classic(base_size = 20)) 
 ```
 
@@ -22,18 +23,20 @@ movies_subset=movies_joined %>%
 
 plotting different fits
 ```{r}
-ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
+p1 = ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
   geom_point()+
   geom_smooth(method="lm") +
   ggtitle("linear model")
-ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
+p2 = ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
   geom_point()+
-  geom_smooth(formula = "y~exp(x)") +
+  geom_smooth(formula = "y~exp(x)",method="lm") +
   ggtitle("exponential: y~exp(x)")
-ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
+p3 = ggplot(movies_subset,aes(x=imdb_score,y=rotten_tomatoes))+
   geom_point()+
-  geom_smooth(formula = "y~poly(x,2)") +
+  geom_smooth(formula = "y~poly(x,2)",method="lm") +
   ggtitle("quadratic: y~poly(x,2)")
+
+grid.arrange(p1,p2,p3,nrow=1)
 ```
 
 
@@ -65,6 +68,7 @@ smoking %>%
 
 smoking has an negative effect when we control for age. 
 ```{r}
+library(broom)
 model1=lm(formula = lung_capacity ~ smoke, data = smoking)
 model2=lm(formula = lung_capacity ~ age + smoke, data = smoking)
 tidy(model1)
@@ -96,6 +100,7 @@ tibble(x2_given_x1,y_given_x1) %>%
 generate some fake data with a strong interaction
 ```{r}
 set.seed(100)
+library(MASS)
 a=mvrnorm(100,mu=c(5,5),Sigma = matrix(c(1,0.75,0.75,1),ncol=2))
 b=mvrnorm(100,mu=c(5,5),Sigma = matrix(c(1,-0.75,-0.75,1),ncol=2))
 a=as_tibble(a)
