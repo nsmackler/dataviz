@@ -2,43 +2,8 @@
 library(tidyverse)
 
 theme_set(theme_classic(base_size = 20)) 
+library(infer)
 ```
-
-
-using lapply to make a list of files (save as object)
-```{r}
-files=lapply(list.files(path = "movies",full.names = F, pattern = ".txt"),function(file_name){
-  read_delim(paste0("movies/",file_name),delim = ",")
-})
-names(files)=str_replace(string=list.files(path = "movies",full.names = F, pattern = ".txt"),pattern = ".txt",replacement = "")
-names(files)
-movies_joined=full_join(files[["movies_imdb"]],files[["movies_rottentom"]],by=c("movie_title"="title"))
-
-```
-
-Pirate plot. Arrrrr, from the `ggpirate` package
-```{r}
-#devtools::install_github("mikabr/ggpirate")
-library(ggpirate)
-
-iris %>% 
-  ggplot(aes(x=Species,y=Sepal.Width))+
-  geom_pirate(aes(colour = Species, fill = Species))
-
-
-iris %>% ggplot(aes(x=Species,y=Sepal.Width))+
-  geom_pirate(aes(colour = Species, fill = Species),bars=F)
-```
-
-Antother correlation plot, from the `psych` package
-```{r}
-library(psych)
-
-movies_joined %>% 
-    select(imdb_score,rotten_tomatoes,metacritic,budget) %>%
-    pairs.panels()
-```
-
 
 Sampling from a distribution: Binomial
 ```{r}
@@ -92,7 +57,7 @@ cookie_sample %>% count(cchip)
 Let's bootstrap this subsample 1000x to estimate a confidence interval on our point estimate using some other functions in the `infer` package
 ```{r}
 boot_cookie=cookie_sample %>% 
-  specify(response = cchip,success = "chocolate chip") %>% 
+  specify(response = cchip, success = "chocolate chip") %>% 
   generate(reps = 1000,type = "bootstrap") 
 
 boot_cookie %>% 
@@ -154,17 +119,19 @@ p_cchip
 1.96*sqrt((p_cchip*(1-p_cchip))/length(cookie_sample$cchip))
 ```
 
-Do movies made before  movies have a higher IMDB rating than romance movies? Can we use a permutation test?
+Do action movies have a higher IMDB rating than non-action movies? 
 
 ```{r}
-movies_action=files[["movies_imdb"]] %>% 
+movies_imdb=read_delim("movies/movies_imdb.txt",delim=",") ## read in file
+
+## select action movies
+movies_action=movies_imdb %>% 
   mutate(action=str_detect(genres,"Action")) %>%
   select(action,title_year,imdb_score)
 
 movies_action%>%
   ggplot(aes(x=action,y=imdb_score))+
-  geom_pirate(aes(colour = action),bars = F)+
-  scale_color_brewer(palette = "Dark2")
+  geom_boxplot(fill="grey")
 ```
 
 
@@ -177,8 +144,7 @@ movies_action_sample <- movies_action %>%
 
 movies_action_sample%>%
   ggplot(aes(x=action,y=imdb_score))+
-  geom_pirate(aes(colour = action),bars = F)+
-  scale_color_brewer(palette = "Dark2")
+  geom_boxplot(fill="grey")
 ```
 
 hypothesis testing with `infer` and using permutations
