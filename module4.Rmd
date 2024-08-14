@@ -20,7 +20,9 @@ read in drinks and convert it to long format with just beer, wine, and spirits
 ```{r}
 drinks=read_delim("drinks/drinks_US.tsv",delim="\t")
 
-drinks_long=drinks %>% select(-total) %>% gather(key=type,value=gallons,beer:spirits)
+drinks_long=drinks %>% 
+  select(-total) %>%
+  pivot_longer(names_to="type",values_to="gallons",cols=beer:spirits)
 
 drinks_long
 
