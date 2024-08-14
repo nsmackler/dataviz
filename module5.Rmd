@@ -230,7 +230,7 @@ Let's make a  IMDB, rotten tomatoes, and metacritic scores from the same distrib
 ```{r}
 movies_joined %>% 
     select(movie_title,metacritic,imdb_score,rotten_tomatoes) %>%
-    gather(key=source,value = score,c(metacritic,imdb_score,rotten_tomatoes)) %>%
+    pivot_longer(names_to="source",values_to = "score",cols=c(metacritic,imdb_score,rotten_tomatoes)) %>%
     ggplot(aes(x=score,fill=source))+
     geom_density(alpha=0.5) +
     scale_fill_brewer(palette = "Set1")
@@ -241,7 +241,7 @@ use the scale() function
 ```{r}
 movies_joined %>% 
     select(movie_title,metacritic,imdb_score,rotten_tomatoes) %>%
-    gather(key=source,value = score,c(metacritic,imdb_score,rotten_tomatoes)) %>%
+    pivot_longer(names_to="source",values_to = "score",cols=c(metacritic,imdb_score,rotten_tomatoes)) %>%
     group_by(source) %>%
     mutate(score=scale(score)) %>%
     ggplot(aes(x=score,fill=source))+

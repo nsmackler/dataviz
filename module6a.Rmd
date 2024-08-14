@@ -168,7 +168,7 @@ calculate indirect effects and plot
 boot_results=boot_results %>% 
   mutate(ide=c - cprime)
 boot_results %>% 
-  gather(key=path,value=effect) %>%
+  pivot_longer(names_to="path",values_to="effect") %>%
   ggplot(aes(x=effect,fill=path))+
   geom_histogram(position = "dodge")
 ```
